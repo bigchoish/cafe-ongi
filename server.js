@@ -37,6 +37,14 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server, path: "/ws", maxPayload: 8 * 1024 });
 const rooms = new Map();
+// 방명록: 카페(방)별로 data/guestbook.json 에 저장합니다. (Render 무료 요금제는 재배포하면 파일이 초기화됩니다)
+const GB_FILE = process.env.GUESTBOOK_FILE || path.join(__dirname, "data", "guestbook.json");
+const GB_MAX = 300;
+let guestbooks = {};
+try { guestbooks = JSON.parse(fs.readFileSync(GB_FILE, "utf8")) || {}; } catch (e) { guestbooks = {}; }
+let gbSaveTimer = null;
+const saveGuestbooks = () => { clearTimeout(gbSaveTimer); gbSaveTimer = setTimeout(() => {
+  try { fs.mkdirSync(path.dirname(GB_FILE), { recursive: true }); fs.writeFileSync(GB_FILE, JSON.stringify(guestbooks)); } catch (e) { console.error("방명록 저장 실패", e.message); } }, 500); };
 let seq = 0;
 const clean = (s) => String(s || "").replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g, "").trim();
 const getRoom = (name) => { if (!rooms.has(name)) rooms.set(name, { clients: new Map(), history: [], neon: null }); return rooms.get(name); };
@@ -52,9 +60,9 @@ wss.on("connection", (ws, req) => {
 
   const id = (++seq).toString(36) + Math.random().toString(36).slice(2, 6);
   ws.isHost = !!HOST_KEY && url.searchParams.get("host") === HOST_KEY;
-  ws.alive = true; ws.presence = {}; ws.bucket = { p: 40, c: 3, last: Date.now() };
+  ws.alive = true; ws.presence = {}; ws.bucket = { p: 40, c: 3, last: Date.now() }; ws.lastGb = 0;
   room.clients.set(id, ws);
-  send(ws, { t: "welcome", id, peers: [...room.clients].filter(([k]) => k !== id).map(([k, c]) => ({ id: k, presence: c.presence })), history: room.history, neon: room.neon, host: ws.isHost });
+  send(ws, { t: "welcome", id, peers: [...room.clients].filter(([k]) => k !== id).map(([k, c]) => ({ id: k, presence: c.presence })), history: room.history, neon: room.neon, host: ws.isHost, gb: guestbooks[name] || [] });
   broadcast(room, { t: "join", id, presence: {} }, id);
 
   ws.on("pong", () => { ws.alive = true; });
@@ -69,7 +77,17 @@ wss.on("connection", (ws, req) => {
       ws.presence = m.presence;
       broadcast(room, { t: "presence", id, presence: m.presence }, id);
     } else if (m.t === "msg" && typeof m.topic === "string") {
-      if (m.topic === "neon") {
+      if (m.topic === "gb_add") {
+        if (now - ws.lastGb < 20000) return; ws.lastGb = now;
+        const text = clean(m.data && m.data.text).slice(0, 100); if (!text) return;
+        const entry = { id: now.toString(36) + Math.random().toString(36).slice(2, 6), nick: clean(m.data && m.data.nick).slice(0, 14) || "손님", text, ts: now };
+        const list = guestbooks[name] || (guestbooks[name] = []); list.push(entry); if (list.length > GB_MAX) list.shift(); saveGuestbooks();
+        broadcast(room, { t: "msg", id, topic: "gb", data: { op: "add", entry } });
+      } else if (m.topic === "gb_del") {
+        if (!ws.isHost) return; const del = String(m.data && m.data.id || "");
+        guestbooks[name] = (guestbooks[name] || []).filter((e) => e.id !== del); saveGuestbooks();
+        broadcast(room, { t: "msg", id, topic: "gb", data: { op: "del", id: del } });
+      } else if (m.topic === "neon") {
         if (!ws.isHost) return;
         const d = m.data || {}; const colors = ["warm", "pink", "mint", "blue"];
         room.neon = { text: clean(d.text).slice(0, 60), nick: clean(d.nick).slice(0, 14), color: colors.includes(d.color) ? d.color : "warm", ts: now };
