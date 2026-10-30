@@ -117,6 +117,18 @@ footer p{margin:0;max-width:78ch}
 .neon-off{height:22px;padding:0 8px;border-radius:7px;border:1px solid var(--line-2);background:none;color:var(--muted);font:inherit;font-size:11.5px;cursor:pointer}
 .chat-log .pin{margin-left:6px;height:20px;padding:0 7px;border-radius:6px;border:1px solid var(--line-2);background:none;color:var(--muted);font:inherit;font-size:11px;cursor:pointer;vertical-align:1px;opacity:.75}
 .chat-log .pin:hover{opacity:1;color:var(--accent);border-color:var(--accent)}
+.chat-log .ev{color:var(--faint);font-size:11.5px}
+.chat-log .ev i{font-style:normal;font-family:var(--mono);margin-left:6px;opacity:.8}
+.gb{margin-top:0}
+.gb-form{display:flex;gap:8px}
+.gb-form input{flex:1;min-width:0;box-sizing:border-box;height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:inherit}
+.gb-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.gb-list li{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0;background:var(--surface-2)}
+.gb-list .who{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;color:var(--faint)}
+.gb-list .who b{color:var(--accent);font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gb-list p{margin:0;font-size:13.5px;line-height:1.55;overflow-wrap:anywhere}
+.gb-list .del{align-self:flex-end;height:22px;padding:0 8px;border-radius:7px;border:1px solid var(--line-2);background:none;color:var(--faint);font:inherit;font-size:11px;cursor:pointer}
+.gb-empty{color:var(--faint);font-size:13px;margin:0}
 .chat-form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
 .chat-form input{flex:1;min-width:0;box-sizing:border-box;height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--fg);font:inherit;font-size:13px}
 .chat-form .btn{height:34px}
@@ -254,8 +266,16 @@ footer p{margin:0;max-width:78ch}
     </section>
   </div>
 
+  <section class="panel gb" aria-labelledby="h-gb">
+    <h2 id="h-gb">방명록 <small id="gbCount">다녀간 흔적을 남겨 주세요</small></h2>
+    <form id="gbForm" class="gb-form"><input id="gbInput" type="text" maxlength="100" placeholder="카페에 한마디 남기기 (100자까지)" autocomplete="off" aria-label="방명록에 남길 말"><button class="btn primary" type="submit">남기기</button></form>
+    <ol class="gb-list" id="gbList"></ol>
+    <p class="gb-empty" id="gbEmpty">아직 남겨진 글이 없어요. 첫 번째 손님이 되어 주세요.</p>
+    <button class="btn" id="gbMore" type="button" hidden>더 보기</button>
+  </section>
+
   <footer>
-    <p>같은 링크를 연 사람들은 이 카페에 함께 앉아 서로의 모습이 보입니다. 음악과 말소리, 원두 가는 소리는 녹음 파일이 아니라 브라우저가 실시간으로 합성한 소리라 저작권 걱정 없이 틀어 둘 수 있어요.</p>
+    <p>같은 링크를 연 사람들은 이 카페에 함께 앉아 서로의 모습이 보이고, 누가 들어오고 나갔는지는 채팅창에 시간과 함께 남습니다. 매장 소리는 실제 카페에서 직접 녹음한 소리이고, 음악과 말소리, 원두 가는 소리는 브라우저가 실시간으로 합성한 소리예요.</p>
   </footer>
 </div>
 
@@ -279,7 +299,7 @@ footer p{margin:0;max-width:78ch}
       ws.onopen = function(){ backoff = 500; };
       ws.onmessage = function(ev){ var m; try { m = JSON.parse(ev.data); } catch(e){ return; }
         if (m.t === "welcome"){ myId = m.id; var old = Array.from(peers.values()); peers.clear(); peers.set(myId, mk(myId, myPres)); m.peers.forEach(function(p){ peers.set(p.id, mk(p.id, p.presence)); });
-          fire({ joined:Array.from(peers.values()), left:old }); setConn(true); ws.send(JSON.stringify({ t:"presence", presence:myPres })); (m.history||[]).forEach(function(h){ deliver(h, true); }); isHost = !!m.host; hostReady(isHost); if (m.neon) deliver({ topic:"neon", id:"server", data:m.neon }, true); }
+          fire({ joined:Array.from(peers.values()), left:old }); setConn(true); ws.send(JSON.stringify({ t:"presence", presence:myPres })); (m.history||[]).forEach(function(h){ deliver(h, true); }); isHost = !!m.host; hostReady(isHost); if (m.neon) deliver({ topic:"neon", id:"server", data:m.neon }, true); deliver({ topic:"gb", id:"server", data:{ op:"all", entries:m.gb||[] } }, true); }
         else if (m.t === "join"){ var p = mk(m.id, m.presence); peers.set(m.id, p); fire({ joined:[p] }); }
         else if (m.t === "presence"){ var u = mk(m.id, m.presence); peers.set(m.id, u); fire({ updated:[u] }); }
         else if (m.t === "leave"){ var l = peers.get(m.id); if (l){ peers.delete(m.id); fire({ left:[l] }); } }
@@ -362,16 +382,28 @@ function resolveSeat(){
   if(clash){ const taken=new Set(os.map(o=>o.seat)); const free=[...Array(SEATS).keys()].filter(i=>!taken.has(i));
     if(free.length){ me.seat=free[ri(free.length)]; push(); } }
 }
+// who came and went, written into the chat log
+const peerNick=new Map(), pendingJoin=new Set(); let logArmedAt=Infinity;
+function hhmm(){ const d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+function logEvent(text){ const log=$("#chatLog"); if(!log) return; const p=document.createElement("p"); p.className="ev"; p.append(document.createTextNode(text)); const t=document.createElement("i"); t.textContent=hhmm(); p.append(t);
+  const atBottom=log.scrollHeight-log.scrollTop-log.clientHeight<40; log.append(p); while(log.children.length>80) log.firstChild.remove(); if(atBottom) log.scrollTop=log.scrollHeight; }
 function onPeers(ch){
-  const now=performance.now();
-  for(const p of ch.joined){ const s=sanitize(p); if(s&&!p.sameTab) anims.set(p.peer,{sip:s.sip,page:s.page,sipAt:-1e9,pageAt:-1e9}); }
+  const now=performance.now(), armed=now>=logArmedAt;
+  for(const p of ch.joined){ if(p.sameTab||p.kind!=="viewer") continue; const s=sanitize(p);
+    if(s) anims.set(p.peer,{sip:s.sip,page:s.page,sipAt:-1e9,pageAt:-1e9});
+    if(!armed){ peerNick.set(p.peer,s?s.nick:null); continue; }
+    if(s){ peerNick.set(p.peer,s.nick); logEvent(s.nick+"님이 들어왔어요"); } else pendingJoin.add(p.peer); }
   for(const p of ch.updated){ if(p.sameTab) continue; const s=sanitize(p); if(!s) continue;
+    if(pendingJoin.has(p.peer)){ pendingJoin.delete(p.peer); logEvent(s.nick+"님이 들어왔어요"); }
+    peerNick.set(p.peer,s.nick);
     const a=anims.get(p.peer)||{sip:s.sip,page:s.page,sipAt:-1e9,pageAt:-1e9};
     if(s.sip!==a.sip){a.sip=s.sip;a.sipAt=now; if(A.on) sfxSip(0.22);}
     if(s.page!==a.page){a.page=s.page;a.pageAt=now; if(A.on) sfxPage(0.18);}
     if(s.cup===0&&s.seat>=0) enqueueDelivery(p.peer);
     anims.set(p.peer,a); }
-  for(const p of ch.left) anims.delete(p.peer);
+  for(const p of ch.left){ anims.delete(p.peer); if(p.sameTab) continue;
+    const nick=peerNick.get(p.peer)||(sanitize(p)||{}).nick; if(armed&&nick&&!pendingJoin.has(p.peer)) logEvent(nick+"님이 나갔어요");
+    pendingJoin.delete(p.peer); peerNick.delete(p.peer); }
   resolveSeat(); renderPeople(); updateLive();
 }
 function updateLive(){
@@ -386,9 +418,9 @@ function updateLive(){
     const r=await window.claude.use("room");
     if(!r){roomState="solo";updateLive();return;}
     room=r;
-    room.onConnection(c=>{ if(room){roomState=c?"live":"connecting"; if(c) push(); updateLive();} },()=>{room=null;roomState="solo";updateLive();renderPeople();});
+    room.onConnection(c=>{ if(room){roomState=c?"live":"connecting"; if(c){ push(); if(logArmedAt===Infinity) logArmedAt=performance.now()+2500; } updateLive();} },()=>{room=null;roomState="solo";updateLive();renderPeople();});
     room.onPeers(onPeers,()=>{room=null;roomState="solo";updateLive();renderPeople();});
-    room.on("chat",onChat); room.on("neon",m=>{ if(!neonDb) showNeon(m.data); });
+    room.on("chat",onChat); room.on("gb",m=>gbFromRoom(m.data)); room.on("neon",m=>{ if(!neonDb) showNeon(m.data); });
     push();
   }catch(e){roomState="solo";updateLive();}
 })();
@@ -1471,14 +1503,51 @@ function showNeon(d){ const v=d&&typeof d==="object"?{text:cleanText(d.text).sli
 async function setNeon(d){ if(!canPin) return; const body={text:d?d.text:"",nick:d?d.nick:"",color:neonColor,ts:Date.now()};
   try{ if(neonDb) await neonDb.set(body); else if(room) await room.emit("neon",body); else showNeon(body); }
   catch(e){ addLine("","네온 사인을 바꾸지 못했어요. 이 카페를 편집할 수 있는 사람만 바꿀 수 있어요.",false,true); } }
-function renderNeonCtl(){ $("#neonCtl").hidden=!canPin; document.querySelectorAll("#neonCtl .sw-btn").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.neon===neonColor))); document.querySelectorAll("#chatLog .pin").forEach(b=>b.hidden=!canPin); }
+function renderNeonCtl(){ if(typeof renderGb==="function"&&gbEntries.length) renderGb(); $("#neonCtl").hidden=!canPin; document.querySelectorAll("#neonCtl .sw-btn").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.neon===neonColor))); document.querySelectorAll("#chatLog .pin").forEach(b=>b.hidden=!canPin); }
 document.querySelectorAll("#neonCtl .sw-btn").forEach(b=>b.addEventListener("click",()=>{ neonColor=b.dataset.neon; store.set("neonColor",neonColor); renderNeonCtl(); if(neonState&&neonState.text) setNeon(neonState); }));
 $("#neonOff").addEventListener("click",()=>setNeon(null));
 (async()=>{ try{ if(!window.claude||!window.claude.use) return;
   const [db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")]);
   if(user){ try{ canPin=!!(await user.canEdit()); }catch(e){} }
-  if(db){ neonDb=db.doc("live/neon"); neonDb.onSnapshot(sn=>showNeon(sn.exists?sn.data():null),()=>{ neonDb=null; }); }
-  renderNeonCtl(); }catch(e){} })();
+  if(db){ neonDb=db.doc("live/neon"); neonDb.onSnapshot(sn=>showNeon(sn.exists?sn.data():null),()=>{ neonDb=null; });
+    gbMode="db"; gbDbRef=db.collection("guestbook"); try{ gbUid=user?await user.id():null; }catch(e){}
+    gbDbRef.onSnapshot(gbFromDb,()=>{ gbMode="room"; gbFromRoom({op:"none"}); }); }
+  else gbMode="room";
+  renderNeonCtl(); renderGb(); }catch(e){} })();
+// ---------- guestbook: kept in the artifact's shared store, or on the site's server ----------
+let gbEntries=[], gbRoomEntries=[], gbShown=24, gbMode=null, gbDbRef=null, gbDocs=new Map(), gbUid=null, gbLast=0;
+function fmtDate(ts){ const d=new Date(ts); return `${d.getMonth()+1}.${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+function renderGb(){ const list=$("#gbList"); list.textContent="";
+  gbEntries.slice(0,gbShown).forEach(e=>{ const li=document.createElement("li"); const who=document.createElement("div"); who.className="who";
+    const b=document.createElement("b"); b.textContent=e.nick; const t=document.createElement("span"); t.textContent=fmtDate(e.ts); who.append(b,t);
+    const p=document.createElement("p"); p.textContent=e.text; li.append(who,p);
+    if(canPin){ const d=document.createElement("button"); d.type="button"; d.className="del"; d.textContent="지우기"; d.addEventListener("click",()=>gbDelete(e)); li.append(d); }
+    list.append(li); });
+  $("#gbEmpty").hidden=gbEntries.length>0; $("#gbMore").hidden=gbEntries.length<=gbShown;
+  $("#gbCount").textContent=gbEntries.length?`${gbEntries.length}개의 흔적`:"다녀간 흔적을 남겨 주세요"; }
+function cleanGb(e){ const text=cleanText(e&&e.text).slice(0,100); if(!text) return null; return {id:String(e.id||""),uid:e.uid||null,nick:cleanText(e.nick).slice(0,14)||"손님",text,ts:Number(e.ts)||0}; }
+function gbFromRoom(d){ if(!d) return;
+  if(d.op==="all") gbRoomEntries=(Array.isArray(d.entries)?d.entries:[]).map(cleanGb).filter(Boolean);
+  else if(d.op==="add"){ const e=cleanGb(d.entry); if(e) gbRoomEntries.push(e); }
+  else if(d.op==="del") gbRoomEntries=gbRoomEntries.filter(e=>e.id!==String(d.id));
+  if(gbMode!=="db"){ gbEntries=[...gbRoomEntries].sort((a,b)=>b.ts-a.ts); renderGb(); } }
+function gbFromDb(qs){ gbDocs.clear(); const all=[];
+  qs.docs.forEach(d=>{ if(!d.exists) return; const v=d.data()||{}; gbDocs.set(d.id,v); (Array.isArray(v.entries)?v.entries:[]).forEach(x=>{ const e=cleanGb({...x,nick:v.nick,uid:d.id,id:d.id+":"+x.ts}); if(e) all.push(e); }); });
+  gbEntries=all.sort((a,b)=>b.ts-a.ts); renderGb(); }
+async function gbAdd(text){
+  if(gbMode==="db"){ if(!gbUid) throw new Error("signin"); const cur=gbDocs.get(gbUid)||{}; const entries=(Array.isArray(cur.entries)?cur.entries:[]).slice(-9);
+    entries.push({text,ts:Date.now()}); await gbDbRef.doc(gbUid).set({nick:me.nick,entries}); }
+  else if(room){ if(!room.connected()) throw new Error("offline"); await room.emit("gb_add",{text,nick:me.nick}); }
+  else throw new Error("offline"); }
+async function gbDelete(e){ if(!canPin) return;
+  try{ if(gbMode==="db"){ const cur=gbDocs.get(e.uid); if(!cur) return; await gbDbRef.doc(e.uid).set({nick:cur.nick||"손님",entries:(cur.entries||[]).filter(x=>Number(x.ts)!==e.ts)}); }
+    else if(room) await room.emit("gb_del",{id:e.id}); }catch(err){ addLine("","방명록 글을 지우지 못했어요.",false,true); } }
+$("#gbForm").addEventListener("submit",async ev=>{ ev.preventDefault(); const inp=$("#gbInput"), text=cleanText(inp.value).slice(0,100); if(!text) return;
+  if(Date.now()-gbLast<20000){ inp.setCustomValidity("방명록은 20초에 한 번 남길 수 있어요."); inp.reportValidity(); setTimeout(()=>inp.setCustomValidity(""),2000); return; }
+  try{ await gbAdd(text); gbLast=Date.now(); inp.value=""; }
+  catch(err){ inp.setCustomValidity(err&&err.message==="signin"?"로그인한 손님만 방명록을 남길 수 있어요.":"카페에 연결된 뒤에 남길 수 있어요. 잠시 후 다시 시도해 주세요."); inp.reportValidity(); setTimeout(()=>inp.setCustomValidity(""),2500); } });
+$("#gbMore").addEventListener("click",()=>{ gbShown+=24; renderGb(); });
+renderGb();
 $("#chatToggle").addEventListener("click",()=>{ const c=$("#chat"); c.hidden=!c.hidden; $("#chatToggle").setAttribute("aria-pressed",String(!c.hidden)); });
 function esc(s){return s.replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function renderPeople(){ const all=[Object.assign({me:true},me),...others()];
