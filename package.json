@@ -1,0 +1,11 @@
+{
+  "name": "cafe-ongi",
+  "version": "1.0.0",
+  "description": "함께 앉아 작업하는 3D 가상 카페 (실시간 동시 접속, 채팅)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" },
+  "dependencies": { "ws": "^8.18.0" },
+  "license": "UNLICENSED",
+  "private": true
+}
