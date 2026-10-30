@@ -200,10 +200,10 @@ footer p{margin:0;max-width:78ch}
         <div class="slider"><label for="vMusic">음악</label><input id="vMusic" type="range" min="0" max="100"><output id="oMusic"></output></div>
         <div class="slider"><label for="vChat">말소리</label><input id="vChat" type="range" min="0" max="100"><output id="oChat"></output></div>
         <div class="slider"><label for="vBar">바리스타</label><input id="vBar" type="range" min="0" max="100"><output id="oBar"></output></div>
-        <div class="slider"><label for="vMurmur">카페 소음</label><input id="vMurmur" type="range" min="0" max="100"><output id="oMurmur"></output></div>
         <div class="slider"><label for="vRain">창밖 소리</label><input id="vRain" type="range" min="0" max="100"><output id="oRain"></output></div>
         <div class="slider"><label for="vSfx">효과음</label><input id="vSfx" type="range" min="0" max="100"><output id="oSfx"></output></div>
       </div>
+      <div class="row"><button class="btn" id="volReset" type="button">추천 비율로 되돌리기</button></div>
       <div class="row">
         <span class="label" style="width:62px">인테리어</span>
         <div class="seg" role="group" aria-label="인테리어" id="styleSeg">
@@ -395,7 +395,10 @@ function updateLive(){
 setTimeout(()=>{ if(roomState==="connecting"&&!room){roomState="solo";updateLive();} },11000);
 
 // ---------- audio ----------
-const A={ctx:null,on:false,vols:Object.assign({real:75,music:40,chat:25,bar:60,murmur:15,rain:50,sfx:70},store.get("vols",{}))};
+// balanced mix: the real recording is the bed, the barista and rain sit on top, music stays low, synthetic voices only fill gaps
+const VOL_DEFAULT={real:80,music:28,chat:12,bar:55,rain:42,sfx:60}, VOL_VER=2;
+const A={ctx:null,on:false,vols:Object.assign({},VOL_DEFAULT,store.get("volsVer",0)===VOL_VER?store.get("vols",{}):{})};
+store.set("volsVer",VOL_VER); store.set("vols",A.vols);
 let noiseBuf=null, crackleBuf=null;
 function mk(type,o){const n=A.ctx["create"+type](); if(o) for(const k in o){ if(n[k]&&n[k].value!==undefined) n[k].value=o[k]; else n[k]=o[k]; } return n;}
 function gainNode(v){const g=A.ctx.createGain(); g.gain.value=v; return g;}
@@ -414,7 +417,7 @@ function startAudio(){
   const comp=mk("DynamicsCompressor"); comp.threshold.value=-16; comp.ratio.value=3;
   A.master=gainNode(0); chain(A.master,comp,C.destination);
   A.master.gain.linearRampToValueAtTime(0.9,C.currentTime+2);
-  A.bus={music:gainNode(vol("music")),murmur:gainNode(vol("murmur")),rain:gainNode(vol("rain")),sfx:gainNode(vol("sfx"))};
+  A.bus={music:gainNode(vol("music")),murmur:gainNode(0.12),rain:gainNode(vol("rain")),sfx:gainNode(vol("sfx"))};
   for(const k in A.bus) A.bus[k].connect(A.master);
   // window: rain hiss, rumble, wind
   A.wx={hiss:gainNode(0),rumble:gainNode(0),wind:gainNode(0)};
@@ -422,11 +425,7 @@ function startAudio(){
   chain(noiseSrc(),filt("lowpass",260),A.wx.rumble,A.bus.rain);
   const windF=filt("bandpass",380,0.7); chain(noiseSrc(),windF,A.wx.wind,A.bus.rain);
   const wl=mk("Oscillator"); wl.frequency.value=0.07; const wlg=gainNode(160); chain(wl,wlg,windF.frequency); wl.start();
-  // murmur
-  [[430,1.0,0.17],[1050,1.5,0.23],[700,1.2,0.11]].forEach(([f,q,r])=>{
-    const g=gainNode(0.45); chain(noiseSrc(),filt("bandpass",f,q),g,A.bus.murmur);
-    const l=mk("Oscillator"); l.frequency.value=r; const lg=gainNode(0.3); chain(l,lg,g.gain); l.start();
-  });
+  // (synthetic noise-band murmur removed: the real recording carries the room tone; this bus now only carries occasional cup clinks)
   // room reverb + chatter + barista buses
   A.verb=C.createConvolver(); A.verb.buffer=makeIR(1.8); chain(A.verb,gainNode(0.4),A.master);
   A.bus.chat=gainNode(vol("chat")); A.bus.bar=gainNode(vol("bar")); A.bus.chat.connect(A.master); A.bus.bar.connect(A.master);
@@ -1396,8 +1395,11 @@ $("#focusBtn").addEventListener("click",()=>{ ensureAudio();
   push(); focusUI(); renderStats(); renderPeople(); });
 setInterval(()=>{ if(me.fe){ if(Date.now()>=me.fe){ stats.mins+=me.fd/60000; me.ses++; me.fe=0; me.fd=0; saveStats(); renderStats(); sfxChime(); push(); renderPeople(); } focusUI(); } },1000);
 // sound controls
-[["real","Real"],["music","Music"],["chat","Chat"],["bar","Bar"],["murmur","Murmur"],["rain","Rain"],["sfx","Sfx"]].forEach(([k,id])=>{ const el=$("#v"+id), out=$("#o"+id); el.value=A.vols[k]; out.textContent=A.vols[k];
+const VOL_KEYS=[["real","Real"],["music","Music"],["chat","Chat"],["bar","Bar"],["rain","Rain"],["sfx","Sfx"]];
+VOL_KEYS.forEach(([k,id])=>{ const el=$("#v"+id), out=$("#o"+id); el.value=A.vols[k]; out.textContent=A.vols[k];
   el.addEventListener("input",()=>{ A.vols[k]=+el.value; out.textContent=el.value; setVol(k); store.set("vols",A.vols); }); });
+$("#volReset").addEventListener("click",()=>{ Object.assign(A.vols,VOL_DEFAULT); store.set("vols",A.vols);
+  VOL_KEYS.forEach(([k,id])=>{ $("#v"+id).value=A.vols[k]; $("#o"+id).textContent=A.vols[k]; setVol(k); }); });
 function setWeather(w){ weather=w; store.set("wx",w); document.querySelectorAll("#wxSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.wx===w))); buildBg(); setWeatherAudio(); }
 document.querySelectorAll("#wxSeg button").forEach(b=>b.addEventListener("click",()=>setWeather(b.dataset.wx)));
 function ensureAudio(){ if(!A.on){ startAudio(); $("#enter").hidden=true; } }
