@@ -47,11 +47,18 @@ canvas{display:block;width:100%;touch-action:none;cursor:grab;outline:none}
 .cupbar{display:inline-flex;gap:3px}
 .cupbar i{width:5px;height:16px;border-radius:2px;background:rgba(236,230,221,.14)}
 .cupbar i.f{background:var(--accent)}
-.enter{position:absolute;z-index:3;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px;
-  padding:16px 28px;border-radius:18px;color:var(--fg);font:inherit;cursor:pointer;text-align:center}
-.enter strong{font-family:var(--display);font-size:20px;font-weight:700;white-space:nowrap}
-.enter span{font-size:12.5px;color:var(--muted)}
-.enter:hover{border-color:var(--line-2)}
+.enter{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:stretch;gap:14px;
+  width:min(360px,calc(100% - 32px));box-sizing:border-box;padding:22px 22px 18px;border-radius:20px;color:var(--fg);text-align:left;box-shadow:0 20px 60px rgba(0,0,0,.45)}
+.enter-head{display:flex;flex-direction:column;gap:4px}
+.enter-field{display:flex;flex-direction:column;gap:6px}
+.enter-field input{box-sizing:border-box;height:44px;padding:0 14px;border-radius:12px;border:1px solid var(--line-2);background:rgba(0,0,0,.28);color:var(--fg);font:inherit;font-size:16px}
+.enter-field input:focus{border-color:var(--accent);outline:none}
+.enter-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.enter .btn.primary{height:44px;justify-content:center;font-size:15px}
+.enter-note{margin:0;font-size:12px;color:var(--faint);text-align:center}
+.enter-err{margin:-6px 0 0;font-size:12px;color:#e8a28a}
+.enter strong{font-family:var(--display);font-size:22px;font-weight:700}
+.enter-head span{font-size:13px;color:var(--muted)}
 .sitp{position:absolute;z-index:3;left:50%;bottom:86px;transform:translateX(-50%);height:38px;padding:0 16px;border-radius:999px;color:var(--fg);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;border-color:rgba(201,164,108,.6)}
 .sitp kbd{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:5px;border:1px solid var(--line-2);color:var(--muted)}
 .joy{position:absolute;z-index:3;left:16px;bottom:96px;width:116px;height:116px;border-radius:50%;background:rgba(17,16,14,.45);border:1px solid var(--line-2);touch-action:none}
@@ -141,7 +148,7 @@ footer p{margin:0;max-width:78ch}
   .sitp{bottom:auto;top:calc(var(--cvh,420px) - 54px);left:auto;right:14px;transform:none}
   .joy{bottom:auto;top:calc(var(--cvh,420px) - 132px)}
   .enter{top:calc(var(--cvh,420px) / 2)}
-  .enter{padding:14px 20px;width:max-content;max-width:calc(100% - 40px)}
+  .enter{padding:18px 16px 14px;gap:12px}
 }
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 </style>
@@ -154,7 +161,7 @@ footer p{margin:0;max-width:78ch}
     <div class="brand">
       <span class="eyebrow" id="eyebrow">Seongsu · Study Café</span>
       <h1>카페 온기</h1>
-      <p class="sub" id="sub">노출콘크리트와 화이트오크, 비 내리는 창가. 모르는 사람들과 조용히 함께 작업하는 가상 카페</p>
+      <p class="sub" id="sub">노출콘크리트와 화이트오크, 높은 통창. 모르는 사람들과 조용히 함께 작업하는 가상 카페</p>
     </div>
     <div class="live" aria-live="polite"><span class="dot" id="dot"></span><span id="liveText">카페에 들어가는 중</span></div>
   </header>
@@ -199,7 +206,15 @@ footer p{margin:0;max-width:78ch}
     </div>
     <button class="sitp glass" id="sitPrompt" type="button" hidden>이 자리에 앉기 <kbd>E</kbd></button>
     <div class="joy" id="joy" hidden aria-hidden="true"><span></span></div>
-    <button class="enter glass" id="enter" type="button"><strong>카페에 들어가기</strong><span>음악과 빗소리, 바리스타 소리가 함께 켜져요</span></button>
+    <form class="enter glass" id="enter" role="dialog" aria-modal="false" aria-labelledby="enterTitle" novalidate>
+      <div class="enter-head"><strong id="enterTitle">카페 온기에 오신 걸 환영해요</strong><span>오늘 이 카페에서 불릴 이름을 정해 주세요</span></div>
+      <label class="enter-field"><span class="label">닉네임</span><input id="entryNick" type="text" maxlength="14" autocomplete="nickname" enterkeyhint="go" required></label>
+      <p class="enter-err" id="entryErr" hidden></p>
+      <div class="enter-row"><span class="label">캐릭터</span>
+        <div class="seg" role="group" aria-label="캐릭터 성별" id="entrySex"><button type="button" data-sex="m" aria-pressed="false">남자</button><button type="button" data-sex="f" aria-pressed="false">여자</button></div></div>
+      <button class="btn primary" type="submit">입장하기</button>
+      <p class="enter-note">들어가면 매장 소리와 음악이 함께 켜져요</p>
+    </form>
     <div class="nogl" id="noGL" hidden>이 브라우저에서는 3D 화면을 그릴 수 없어요. 소리와 기록 기능은 그대로 쓸 수 있습니다.</div>
   </div>
   <p class="hint" id="hint">끌어서 둘러보기 · WASD로 걷거나 바닥을 클릭해 이동 · 빈 의자를 누르거나 가까이에서 E로 앉기 · 스페이스바로 한 모금</p>
@@ -356,12 +371,13 @@ const me={
   tone:store.get("tone",ri(TONES.length)),hair:store.get("hair",ri(4)),hc:store.get("hc",ri(HAIRC.length)),sex:store.get("sex",Math.random()<0.5?"m":"f")
 };
 if(!["type","read","rest"].includes(me.mode)) me.mode="type"; if(!["m","f"].includes(me.sex)) me.sex="m";
-let weather=store.get("wx","rain"); if(!["rain","snow","clear"].includes(weather)) weather="rain";
+let weather=store.get("wxVer",0)===2?store.get("wx","clear"):"clear"; if(!["rain","snow","clear"].includes(weather)) weather="clear"; store.set("wxVer",2); store.set("wx",weather);
 const myAnim={sipAt:-1e9,pageAt:-1e9};
 
 // ---------- room ----------
 let room=null, roomState="connecting";
-function push(){ if(!room) return;
+let entered=false;
+function push(){ if(!room||!entered) return;
   room.presence({nick:me.nick,seat:me.seat,mode:me.mode,sip:me.sip,page:me.page,cup:me.cup,cups:me.cups,ses:me.ses,fe:me.fe,fd:me.fd,tone:me.tone,hair:me.hair,hc:me.hc,sex:me.sex,px:+me.px.toFixed(2),pz:+me.pz.toFixed(2),pr:+me.pr.toFixed(2)}).catch(()=>{});
 }
 const anims=new Map();
@@ -1412,16 +1428,16 @@ function sip(){ if(performance.now()-myAnim.sipAt<1500) return; if(me.cup<=0) re
   me.sip++; me.cup--; myAnim.sipAt=performance.now(); sfxSip(0.5);
   if(me.cup===0){ $("#cupNote").textContent="한 잔 다 마셨어요. 바리스타가 내려서 가져다 드릴게요"; setTimeout(()=>{ me.cups++; saveStats(); renderStats(); enqueueDelivery("me"); },1200); }
   renderCup(); push(); }
-$("#sipBtn").addEventListener("click",()=>{ ensureAudio(); sip(); });
-$("#pageBtn").addEventListener("click",()=>{ ensureAudio(); if(me.mode!=="read") setMode("read"); me.page++; myAnim.pageAt=performance.now(); sfxPage(0.6); push(); });
-document.addEventListener("keydown",e=>{ if(e.code==="Space"&&!/INPUT|TEXTAREA|BUTTON|SELECT/.test(document.activeElement.tagName)){ e.preventDefault(); ensureAudio(); sip(); } });
+$("#sipBtn").addEventListener("click",()=>{ if(ensureAudio()) sip(); });
+$("#pageBtn").addEventListener("click",()=>{ if(!ensureAudio()) return; if(me.mode!=="read") setMode("read"); me.page++; myAnim.pageAt=performance.now(); sfxPage(0.6); push(); });
+document.addEventListener("keydown",e=>{ if(e.code==="Space"&&!/INPUT|TEXTAREA|BUTTON|SELECT/.test(document.activeElement.tagName)){ e.preventDefault(); if(ensureAudio()) sip(); } });
 function setMode(m){ me.mode=m; store.set("mode",m); document.querySelectorAll("#modeSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m))); push(); renderPeople(); }
 document.querySelectorAll("#modeSeg button").forEach(b=>b.addEventListener("click",()=>setMode(b.dataset.mode)));
 let focusTimer=null;
 function focusUI(){ const on=me.fe>Date.now(); const b=$("#focusBtn");
   if(on){ const l=me.fe-Date.now(); b.innerHTML=`집중 그만하기 <span class="focus-t">${Math.floor(l/60000)}:${String(Math.floor(l/1000)%60).padStart(2,"0")}</span>`; }
   else b.textContent="25분 집중 시작"; }
-$("#focusBtn").addEventListener("click",()=>{ ensureAudio();
+$("#focusBtn").addEventListener("click",()=>{ if(!ensureAudio()) return;
   if(me.fe>Date.now()){ const done=(Date.now()-(me.fe-me.fd))/60000; stats.mins+=done; me.fe=0; me.fd=0; saveStats(); }
   else { me.fd=25*60000; me.fe=Date.now()+me.fd; }
   push(); focusUI(); renderStats(); renderPeople(); });
@@ -1434,8 +1450,18 @@ $("#volReset").addEventListener("click",()=>{ Object.assign(A.vols,VOL_DEFAULT);
   VOL_KEYS.forEach(([k,id])=>{ $("#v"+id).value=A.vols[k]; $("#o"+id).textContent=A.vols[k]; setVol(k); }); });
 function setWeather(w){ weather=w; store.set("wx",w); document.querySelectorAll("#wxSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.wx===w))); buildBg(); setWeatherAudio(); }
 document.querySelectorAll("#wxSeg button").forEach(b=>b.addEventListener("click",()=>setWeather(b.dataset.wx)));
-function ensureAudio(){ if(!A.on){ startAudio(); $("#enter").hidden=true; } }
-$("#enter").addEventListener("click",()=>{ startAudio(); $("#enter").hidden=true; });
+function ensureAudio(){ if(!entered){ const i=$("#entryNick"); i.focus(); return false; } if(!A.on) startAudio(); return true; }
+// entry: pick a name (and a look) before walking in
+(()=>{ const f=$("#enter"), inp=$("#entryNick"), err=$("#entryErr"); const saved=store.get("nick",null);
+  inp.value=saved||""; inp.placeholder=me.nick;
+  const paintSex=()=>document.querySelectorAll("#entrySex button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sex===me.sex)));
+  document.querySelectorAll("#entrySex button").forEach(b=>b.addEventListener("click",()=>{ setSex(b.dataset.sex); paintSex(); }));
+  paintSex(); if(!coarse) setTimeout(()=>{ try{ inp.focus({preventScroll:true}); }catch(e){} },300);
+  f.addEventListener("submit",e=>{ e.preventDefault(); const nick=cleanText(inp.value||inp.placeholder).slice(0,14);
+    if(nick.length<1){ err.textContent="닉네임을 한 글자 이상 입력해 주세요."; err.hidden=false; inp.focus(); return; }
+    me.nick=nick; store.set("nick",nick); $("#nick").value=nick; err.hidden=true;
+    entered=true; f.hidden=true; startAudio(); push(); renderPeople(); updateLive();
+    logEvent(nick+"님으로 입장했어요"); }); })();
 // me
 const nickEl=$("#nick"); nickEl.value=me.nick; let nickT;
 nickEl.addEventListener("input",()=>{ clearTimeout(nickT); nickT=setTimeout(()=>{ me.nick=nickEl.value.trim().slice(0,14)||"손님"; store.set("nick",me.nick); push(); renderPeople(); },350); });
@@ -1443,7 +1469,7 @@ $("#lookBtn").addEventListener("click",()=>{ me.tone=(me.tone+1)%TONES.length; s
 $("#hairBtn").addEventListener("click",()=>{ me.hair=(me.hair+1)%4; if(me.hair===0){ me.hc=(me.hc+1)%HAIRC.length; store.set("hc",me.hc); } store.set("hair",me.hair); push(); });
 function setSex(x){ me.sex=x; store.set("sex",x); document.querySelectorAll("#sexSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.sex===x))); push(); }
 document.querySelectorAll("#sexSeg button").forEach(b=>b.addEventListener("click",()=>setSex(b.dataset.sex)));
-const STYLE_TXT={seongsu:["Seongsu · Study Café","노출콘크리트와 화이트오크, 비 내리는 창가. 모르는 사람들과 조용히 함께 작업하는 가상 카페"],
+const STYLE_TXT={seongsu:["Seongsu · Study Café","노출콘크리트와 화이트오크, 높은 통창. 모르는 사람들과 조용히 함께 작업하는 가상 카페"],
   classic:["Classic · Coffeehouse","월넛 우드와 딥그린, 벽돌 벽과 앰버 조명. 대형 커피하우스처럼 아늑하게 머무는 가상 카페"]};
 function setStyle(x,rebuild){ STYLE=x; store.set("style",x); document.querySelectorAll("#styleSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.style===x)));
   $("#eyebrow").textContent=STYLE_TXT[x][0]; $("#sub").textContent=STYLE_TXT[x][1]; if(rebuild) rebuildRoom(); }
@@ -1468,7 +1494,7 @@ function onChat(msg){ const d=msg.data||{}; const text=cleanText(d.text); if(!te
   let nick=cleanText(d.nick).slice(0,14)||"손님"; if(msg.sameTab) nick=me.nick; else { const pr=room&&room.peers().find(p=>p.peer===msg.peer); const s_=pr&&sanitize(pr); if(s_) nick=s_.nick; }
   addLine(nick,text,msg.sameTab);
   if(!msg.history){ bubbles.set(msg.sameTab?"me":msg.peer,{text,until:performance.now()+7000}); if(!msg.sameTab&&A.on) tone(A.ctx.currentTime,1320,0.05,0.25,"sine",A.bus.sfx); } }
-$("#chatForm").addEventListener("submit",e=>{ e.preventDefault(); const inp=$("#chatInput"); const text=cleanText(inp.value); if(!text) return;
+$("#chatForm").addEventListener("submit",e=>{ e.preventDefault(); if(!entered){ $("#entryNick").focus(); return; } const inp=$("#chatInput"); const text=cleanText(inp.value); if(!text) return;
   if(Date.now()-lastSend<1200){ addLine("","조금 천천히 보내 주세요.",false,true); return; }
   if(!room||!room.connected()){ addLine("","아직 카페에 연결되지 않아 보낼 수 없어요. 혼자 있을 때는 내 말풍선만 보여요.",false,true); bubbles.set("me",{text,until:performance.now()+7000}); inp.value=""; return; }
   lastSend=Date.now(); room.emit("chat",{text,nick:me.nick}).catch(err=>{ addLine("",err&&err.code==="not_permitted"?"이 카페에서는 보기 권한만 있어 채팅을 보낼 수 없어요.":"메시지를 보내지 못했어요. 잠시 후 다시 시도해 주세요.",false,true); });
