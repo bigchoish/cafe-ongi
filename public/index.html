@@ -677,8 +677,17 @@ const seats=[];
 let backdropTex, dropTex, dropBase, drops=[], dropAcc=0, clockTex, rain, snow, hemi, keyLight, winLight, lamps=[], glows=[], dropPlane, warmEm=[];
 let barista=null, steamFx=null, hitMeshes=[], hoverSeat=-1, pickMode=false, ROOT=null, BUILDING=false;
 let STYLE=store.get("style","seongsu"), VIEW=store.get("view","city"); if(!['seongsu','classic'].includes(STYLE)) STYLE='seongsu'; if(!['city','nature'].includes(VIEW)) VIEW='city';
-function seatXZ(i){ const r=Math.floor(i/COLS), c=i%COLS; return {x:(c-2.5)*1.55+0.55, z:ROWZ[r]}; }
-const rowOf=i=>Math.floor(i/COLS);
+// seats 0-11: window bar and counter bar (solo). seats 12-23: shared tables where people sit together and face each other
+// [x, z, f, table]  f=1 faces the window (-z), f=-1 faces the room (+z)
+const SHARED=[[-0.25,-0.7,-1,0],[0.55,-0.7,-1,0],[1.35,-0.7,-1,0],[-0.25,0.6,1,0],[0.55,0.6,1,0],[1.35,0.6,1,0],
+  [-0.4,1.9,-1,1],[0.4,1.9,-1,1],[-0.4,3.2,1,1],[0.4,3.2,1,1],[3.2,1.9,-1,2],[3.2,3.2,1,2]];
+const TABLES=[{x:0.55,z:-0.05,w:2.6,d:1.0,name:"6인 공용 테이블"},{x:0,z:2.55,w:1.5,d:1.0,name:"4인 테이블"},{x:3.2,z:2.55,w:0.8,d:1.0,name:"2인 테이블"}];
+function seatXZ(i){ if(i>=12){ const t=SHARED[i-12]; return {x:t[0],z:t[1]}; } const r=Math.floor(i/COLS), c=i%COLS; return {x:(c-2.5)*1.55+0.55, z:ROWZ[r]}; }
+const seatF=i=>i>=12?SHARED[i-12][2]:1, seatRot=i=>seatF(i)>0?0:Math.PI;
+// walking corridors (z) between seat rows, and the x lanes that connect neighbouring corridors
+const CORR=[-3.45,-1.35,1.25,3.85];
+function corrOf(i){ if(i<6) return 0; if(i<12) return 1; const z=SHARED[i-12][1]; return z<0?1:z<2.5?2:3; }
+const corrLinks=k=>k===0?[-4.55,5.95]:k===1?[-4.55,-1.3,2.45,5.95]:[-1.2,1.75,5.95];
 function canvasTex(w,h,draw){ const c=document.createElement("canvas"); c.width=w; c.height=h; draw(c.getContext("2d"),w,h);
   const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=8; t._c=c; return t; }
 function texFor(base,rx,ry,ox,oy){ const t=base.clone(); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(rx,ry); t.offset.set(ox||0,oy||0); t.needsUpdate=true; return t; }
@@ -913,7 +922,7 @@ function buildRoom(){
   // ---- seats
   const hitMat=new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,colorWrite:false});
   const lapMat=std(0x9a9da2,{roughness:0.32,metalness:0.7});
-  for(let i=0;i<SEATS;i++){ const {x,z}=seatXZ(i), row=rowOf(i); const g=new THREE.Group(); g.position.set(x,0,z); ROOT.add(g);
+  for(let i=0;i<SEATS;i++){ const {x,z}=seatXZ(i), row=Math.floor(i/COLS); const g=new THREE.Group(); g.position.set(x,0,z); g.rotation.y=seatRot(i); ROOT.add(g);
     let top=0.7775, seatMesh;
     if(row<=1){ seatMesh=rbox(0.42,0.035,0.4,0.03,K?leather:oak,[0,0.45,0.02],g);
       const legM=K?oakV:steel; for(const sx of [-1,1]) for(const sz of [-1,1]) cyl(K?0.016:0.011,K?0.014:0.011,0.43,legM,[sx*0.18,0.215,0.02+sz*0.17],g,8);
@@ -921,8 +930,7 @@ function buildRoom(){
       rbox(0.42,K?0.12:0.085,0.024,0.01,oak,[0,0.78,0.21],g);
       if(row===1) top=0.78;
     } else {
-      cyl(0.36,0.36,K?0.035:0.024,roundTop,[0,0.745,-0.62],g,40); cyl(0.022,0.022,0.72,steel,[0,0.37,-0.62],g,10); cyl(0.19,0.21,0.02,steel,[0,0.01,-0.62],g,28);
-      top=K?0.763:0.757;
+      top=0.76;
       seatMesh=cyl(0.205,0.2,K?0.05:0.03,K?leather:darkWood,[0,K?0.455:0.45,0.02],g,28);
       const wm=K?oakV:darkWood;
       for(const sx of [-1,1]) for(const sz of [-1,1]){ const l=cyl(0.011,0.014,0.45,wm,[sx*0.145,0.22,0.02+sz*0.145],g,8); l.rotation.set(sz*0.1,0,-sx*0.1); }
@@ -942,6 +950,12 @@ function buildRoom(){
     const cupG=new THREE.Group(); cupG.position.set(0.25,top,-0.38); g.add(cupG); makeCup(cupG);
     seats.push({g,lap,piv,scr,cupG,seatMesh,seatMat:seatMesh.material,lid:0.15});
   }
+
+  // ---- shared tables: a long communal table, a table for four and a table for two
+  TABLES.forEach((t,ti)=>{ const tm=ti===0&&!K?oak:roundTop, lm=K?darkWood:steel;
+    rbox(t.w,0.04,t.d,0.015,tm,[t.x,0.74,t.z],ROOT);
+    for(const sx of [-1,1]) for(const sz of [-1,1]) box(0.05,0.72,0.05,lm,[t.x+sx*(t.w/2-0.09),0.36,t.z+sz*(t.d/2-0.09)],ROOT);
+    if(t.w>2) for(const sx of [-1,1]) box(0.04,0.04,t.d-0.2,lm,[t.x+sx*(t.w/2-0.09),0.12,t.z],ROOT,false); });
 
   // ---- counter on the left
   ADD=WG.left;
@@ -1054,7 +1068,7 @@ function buildRoom(){
       mesh(new THREE.SphereGeometry(0.16,32,16),m,[x,2.22,-2.6],ROOT,false); glow(ROOT,[x,2.22,-2.6],1.5,0xffc98e,0.6); } }
   const L1=new THREE.PointLight(warmCol,1.15,8,2); L1.position.set(0.55,2.0,-2.6); ROOT.add(L1); lamps.push([L1,1.15]);
   const shadeMat=K?std(0xa8673f,{roughness:0.3,metalness:0.85,side:THREE.DoubleSide}):std(0x1a1a1a,{roughness:0.35,metalness:0.5,side:THREE.DoubleSide});
-  for(const [col,row] of [[0,2],[2,2],[4,2],[1,3],[3,3],[5,3]]){ const {x,z}=seatXZ(row*COLS+col); const pz=z-0.62;
+  for(const [x,pz] of [[-0.1,-0.05],[1.2,-0.05],[0,2.55],[3.2,2.55]]){
     cyl(0.003,0.003,RH-1.95,steel,[x,(RH+1.95)/2,pz],ROOT,4,false);
     mesh(new THREE.SphereGeometry(0.15,28,12,0,Math.PI*2,0,Math.PI/2),shadeMat,[x,1.8,pz],ROOT,false);
     const em=std(0x000000,{emissive:K?0xffb468:0xffcf96,emissiveIntensity:1.5}); warmEm.push(em); mesh(new THREE.CircleGeometry(0.13,24),em,[x,1.801,pz],ROOT,false).rotation.x=Math.PI/2;
@@ -1194,13 +1208,13 @@ function poseChar(ch,g,a,now,dt,isMe,walking,standing){
 }
 // people walk between seats along the aisles
 const persons=new Map();
-function nearestAisle(z){ let best=0,bd=1e9; ROWZ.forEach((_,r)=>{ const d=Math.abs(AZ(r)-z); if(d<bd){bd=d;best=r;} }); return best; }
-function routeTo(p,seat){ const B=seatXZ(seat), rb=rowOf(seat);
-  if(!p.seated&&Math.hypot(p.x-B.x,p.z-B.z)<1.3){ p.path=[{x:B.x,z:B.z+0.45},{x:B.x,z:B.z}]; p.target=seat; return; }
-  const ra=p.seated&&p.target>=0?rowOf(p.target):nearestAisle(p.z);
-  const az=AZ(ra), bz=AZ(rb); const path=[{x:p.x,z:az}];
-  if(ra!==rb){ const side=SIDE.reduce((a,s)=>Math.abs(p.x-s)+Math.abs(s-B.x)<Math.abs(p.x-a)+Math.abs(a-B.x)?s:a); path.push({x:side,z:az},{x:side,z:bz}); }
-  path.push({x:B.x,z:bz},{x:B.x,z:B.z}); p.path=path; p.target=seat; p.seated=false; }
+function nearestCorr(z){ let best=0,bd=1e9; CORR.forEach((c,r)=>{ const d=Math.abs(c-z); if(d<bd){bd=d;best=r;} }); return best; }
+function routeTo(p,seat){ const B=seatXZ(seat), f=seatF(seat), rb=corrOf(seat);
+  if(!p.seated&&Math.hypot(p.x-B.x,p.z-B.z)<1.3&&(p.z-B.z)*f>-0.05){ p.path=[{x:B.x,z:B.z+0.45*f},{x:B.x,z:B.z}]; p.target=seat; return; }
+  let ra=p.seated&&p.target>=0?corrOf(p.target):nearestCorr(p.z), x=p.x; const path=[{x,z:CORR[ra]}];
+  while(ra!==rb){ const nb=ra+(rb>ra?1:-1); const cx=corrLinks(Math.min(ra,nb)).reduce((a,s)=>Math.abs(x-s)+Math.abs(s-B.x)<Math.abs(x-a)+Math.abs(a-B.x)?s:a);
+    path.push({x:cx,z:CORR[ra]},{x:cx,z:CORR[nb]}); x=cx; ra=nb; }
+  path.push({x:B.x,z:CORR[rb]},{x:B.x,z:B.z}); p.path=path; p.target=seat; p.seated=false; }
 function takenSeats(){ const t=new Set(others().map(o=>o.seat)); t.add(me.seat); return t; }
 
 
@@ -1208,16 +1222,16 @@ function takenSeats(){ const t=new Set(others().map(o=>o.seat)); t.add(me.seat);
 const camS={mode:"orbit",yaw:0.42,pitch:0.5,dist:11.5,fyaw:0,fpitch:-0.1,pos:null,look:null};
 const ORBIT_T=new THREE.Vector3(0.5,0.7,-0.6);
 function camTargets(){
-  if(camS.mode==="seat"){ const mp=persons.get("me"); const sp=seatXZ(me.seat); const x=mp?mp.x:sp.x, z=mp?mp.z:sp.z; const up=mp&&mp.ch?mp.ch.cur.lift:0; const eye=new THREE.Vector3(x,1.3+up,z+0.05);
+  if(camS.mode==="seat"){ const mp=persons.get("me"); const sp=seatXZ(me.seat); const x=mp?mp.x:sp.x, z=mp?mp.z:sp.z; const up=mp&&mp.ch?mp.ch.cur.lift:0; const eye=new THREE.Vector3(x,1.3+up,z+0.05*(me.seat>=0?seatF(me.seat):1));
     const d=new THREE.Vector3(-Math.sin(camS.fyaw)*Math.cos(camS.fpitch),Math.sin(camS.fpitch),-Math.cos(camS.fyaw)*Math.cos(camS.fpitch));
     return [eye,eye.clone().add(d)]; }
   const mp=persons.get("me"); const t=(me.seat<0&&mp)?new THREE.Vector3(ORBIT_T.x*0.4+mp.x*0.6,0.7,ORBIT_T.z*0.4+mp.z*0.6):ORBIT_T;
   return [new THREE.Vector3(t.x+Math.sin(camS.yaw)*Math.cos(camS.pitch)*camS.dist,t.y+Math.sin(camS.pitch)*camS.dist,t.z+Math.cos(camS.yaw)*Math.cos(camS.pitch)*camS.dist),t.clone()];
 }
-function setView(m){ camS.mode=m; if(m==="seat"){ camS.fyaw=0; camS.fpitch=0.02; }
+function setView(m){ camS.mode=m; if(m==="seat"){ camS.fyaw=me.seat>=0?seatRot(me.seat):0; camS.fpitch=0.02; }
   document.querySelectorAll("#viewSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===m)));
   if(CAM){ CAM.fov=m==="seat"?70:38; CAM.updateProjectionMatrix(); } }
-function resetView(){ if(camS.mode==="seat"){ camS.fyaw=0; camS.fpitch=0.02; } else { const tall=W&&W/H<1.2; camS.yaw=0.42; camS.pitch=tall?0.72:0.5; camS.dist=tall?16.5:12.5; } }
+function resetView(){ if(camS.mode==="seat"){ camS.fyaw=me.seat>=0?seatRot(me.seat):0; camS.fpitch=0.02; } else { const tall=W&&W/H<1.2; camS.yaw=0.42; camS.pitch=tall?0.72:0.5; camS.dist=tall?16.5:12.5; } }
 
 function initScene(){
   if(!window.THREE){ $("#noGL").hidden=false; return; }
@@ -1247,7 +1261,6 @@ function applyEnv(){ if(!S) return; const t=curTod, night=t==="night"||t==="dusk
   winLight.intensity={night:0.1,dusk:0.25,dawn:0.4,day:weather==="clear"?0.95:0.7}[t]; lin(winLight.color.set(day?0xe4eef6:t==="night"?0x7890b0:0xe8b49a));
   const envI=day?0.38:0.16; MATS.forEach(m=>{ m.envMapIntensity=envI; }); R.toneMappingExposure=day?0.85:1.0;
   rain.visible=weather==="rain"; snow.visible=weather==="snow"; dropPlane.visible=weather==="rain"; R.shadowMap.needsUpdate=true; }
-const AZ=r=>ROWZ[r]+0.6;
 function tick(now,dt){
   let moving=false;
   // weather
@@ -1260,14 +1273,14 @@ function tick(now,dt){
   for(const [k,p] of persons) if(!present.has(k)){ S.remove(p.ch.g); persons.delete(k); }
   const seatedBy=new Map(); const taken=new Set([...present.values()].map(g=>g.seat));
   for(const [key,g] of present){ let p=persons.get(key); const isMe=key==="me";
-    if(!p){ const sp=g.seat>=0?seatXZ(g.seat):{x:g.px,z:g.pz}; p={ch:makeChar(false),x:sp.x,z:sp.z,rot:g.seat>=0?0:g.pr,rotT:g.seat>=0?0:g.pr,target:g.seat,path:[],seated:g.seat>=0}; S.add(p.ch.g); persons.set(key,p); }
+    if(!p){ const sp=g.seat>=0?seatXZ(g.seat):{x:g.px,z:g.pz}; p={ch:makeChar(false),x:sp.x,z:sp.z,rot:g.seat>=0?seatRot(g.seat):g.pr,rotT:g.seat>=0?seatRot(g.seat):g.pr,target:g.seat,path:[],seated:g.seat>=0}; S.add(p.ch.g); persons.set(key,p); }
     if(g.seat===-1){ if(p.target!==-1){ p.target=-1; p.seated=false; if(!isMe) p.path=[]; } }
     else if(g.seat!==p.target) routeTo(p,g.seat);
     const sig=g.tone+"|"+g.hair+"|"+g.hc+"|"+g.sex; if(p.ch.sig!==sig){ styleChar(p.ch,g); p.ch.sig=sig; }
     let walking=false;
     if(p.path.length){ walking=true; moving=true; const t=p.path[0], dx=t.x-p.x, dz=t.z-p.z, d=Math.hypot(dx,dz), st=1.35*dt;
       if(d>0.001) p.rotT=Math.atan2(-dx,-dz);
-      if(d<=st){ p.x=t.x; p.z=t.z; p.path.shift(); if(!p.path.length){ if(p.target>=0){ p.seated=true; p.rotT=0; } else if(isMe){ me.px=p.x; me.pz=p.z; push(); } } } else { p.x+=dx/d*st; p.z+=dz/d*st; } }
+      if(d<=st){ p.x=t.x; p.z=t.z; p.path.shift(); if(!p.path.length){ if(p.target>=0){ p.seated=true; p.rotT=seatRot(p.target); if(isMe&&camS.mode==="seat") camS.fyaw=p.rotT; } else if(isMe){ me.px=p.x; me.pz=p.z; push(); } } } else { p.x+=dx/d*st; p.z+=dz/d*st; } }
     else if(g.seat===-1){ walking=isMe?controlMe(p,dt):followGoal(p,g,dt); if(walking) moving=true; }
     const dr=((p.rotT-p.rot+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI; p.rot+=dr*Math.min(1,dt*9);
     p.ch.g.position.x=p.x; p.ch.g.position.z=p.z; p.ch.g.rotation.y=p.rot;
@@ -1330,7 +1343,7 @@ function bindPointer(){
     const hit=ray.intersectObjects(objs,false)[0]; if(!hit) return -1;
     if(hit.object.userData.seat!=null) return takenSeats().has(hit.object.userData.seat)?-1:hit.object.userData.seat;
     const P=hit.point; if(P.y>1.6) return -1; let best=-1,bd=0.8; const taken=takenSeats();
-    for(let i=0;i<SEATS;i++){ const {x,z}=seatXZ(i); const d=Math.min(Math.hypot(P.x-x,P.z-z),Math.hypot(P.x-x,P.z-(z-0.6))); if(d<bd){bd=d;best=i;} }
+    for(let i=0;i<SEATS;i++){ const {x,z}=seatXZ(i); const d=Math.min(Math.hypot(P.x-x,P.z-z),Math.hypot(P.x-x,P.z-(z-0.5*seatF(i)))); if(d<bd){bd=d;best=i;} }
     return best>=0&&!taken.has(best)?best:-1; };
   cv.addEventListener("pointerdown",e=>{ cv.setPointerCapture(e.pointerId); pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); moved=0;
     if(pts.size===2){ const [a,b]=[...pts.values()]; pinch0=Math.hypot(a.x-b.x,a.y-b.y); dist0=camS.dist; } });
@@ -1365,7 +1378,7 @@ function setWalkGoal(x,z){ if(me.seat>=0) standUp(); walkGoal={x,z}; goalStuck=0
 function clearGoal(){ walkGoal=null; if(goalMark) goalMark.visible=false; }
 function obstacles(){ const o=[]; // rects [x0,x1,z0,z1] and circles {x,z,r}
   o.push([-4.32,5.38,-5,-4.36],[-4.25,5.32,-3.04,-2.16],[-7,-5.22,-3.32,1.0],[-1.3,2.7,4.6,5]);
-  for(let r=2;r<4;r++) for(let c=0;c<COLS;c++){ const {x,z}=seatXZ(r*COLS+c); o.push({x,z:z-0.62,r:0.4}); }
+  for(const t of TABLES) o.push([t.x-t.w/2,t.x+t.w/2,t.z-t.d/2,t.z+t.d/2]);
   o.push({x:6.25,z:-4.25,r:0.42},{x:-6.2,z:4.2,r:0.42});
   if(STYLE==="classic") o.push({x:-3.75,z:3.95,r:0.5},{x:-1.85,z:3.95,r:0.5},{x:-2.8,z:3.95,r:0.38});
   return o; }
@@ -1397,8 +1410,8 @@ function updateSitPrompt(){ const p=persons.get("me"); let t=-1; if(me.seat===-1
   if(t!==sitTarget){ sitTarget=t; $("#sitPrompt").hidden=t<0; }
   const j=$("#joy"), show=coarse; if(j.hidden===show) j.hidden=!show; }
 function sitDown(s){ if(s<0) return; clearGoal(); moveTo(s); }
-function standUp(){ const p=persons.get("me"); if(me.seat<0||!p) return; const bz=p.z+0.62;
-  me.seat=-1; store.set("seat",-1); me.px=p.x; me.pz=bz; me.pr=0; p.target=-1; p.seated=false; p.path=[{x:p.x,z:bz}]; push(); renderWalkBtn(); renderPeople(); }
+function standUp(){ const p=persons.get("me"); if(me.seat<0||!p) return; const f=seatF(me.seat), bz=p.z+0.62*f;
+  me.seat=-1; store.set("seat",-1); me.px=p.x; me.pz=bz; me.pr=seatRot(p.target>=0?p.target:0); p.target=-1; p.seated=false; p.path=[{x:p.x,z:bz}]; push(); renderWalkBtn(); renderPeople(); }
 function renderWalkBtn(){ $("#walkBtn").textContent=me.seat<0?"가까운 자리에 앉기":"일어나서 걷기"; }
 $("#walkBtn").addEventListener("click",()=>{ if(me.seat>=0) standUp(); else { const p=persons.get("me"); sitDown(p?nearestFreeSeat(p.x,p.z,99):nearestFreeSeat(me.px,me.pz,99)); } });
 $("#sitPrompt").addEventListener("click",()=>sitDown(sitTarget));
@@ -1422,11 +1435,15 @@ function startBarJob(){ const key=barQ.shift(); const g=targetOf(key); if(!g||(k
   const d=barSequence(true); barJob={key,phase:"brew",until:performance.now()+d*1000}; }
 function beginDelivery(job){ const g=targetOf(job.key);
   if(!g||g.seat<0){ if(job.key==="me") finishDelivery(job,true); barJob=null; return; }
-  const B=seatXZ(g.seat), row=rowOf(g.seat), az=AZ(row), sx=B.x+0.62, sz=B.z-0.18;
+  const B=seatXZ(g.seat), f=seatF(g.seat), az=CORR[Math.min(2,corrOf(g.seat))];
+  // stand beside the chair on an open side; a seat with neighbours on both sides is served from behind
+  const busySide=x=>[...Array(SEATS).keys()].some(j=>j!==g.seat&&Math.hypot(seatXZ(j).x-x,seatXZ(j).z-B.z)<0.5);
+  let sx=null, sz=B.z-0.18*f; for(const sd of [1,-1]){ const x=B.x+sd*f*0.62; if(!busySide(x)){ sx=x; break; } }
+  if(sx===null){ sx=B.x+0.3*f; sz=B.z+0.55*f; }
   const start={x:barista.g.position.x,z:barista.g.position.z};
   job.path=[{x:-6.3,z:1.35},{x:-4.55,z:1.35},{x:-4.55,z:az},{x:sx,z:az},{x:sx,z:sz}];
   job.ret=[{x:sx,z:az},{x:-4.55,z:az},{x:-4.55,z:1.35},{x:-6.3,z:1.35},{x:-6.3,z:-1.2}];
-  job.cupAt={x:B.x+0.25,z:B.z-0.38}; job.phase="out"; barista.hcup.visible=true; }
+  job.cupAt={x:B.x+0.25*f,z:B.z-0.38*f}; job.phase="out"; barista.hcup.visible=true; }
 function finishDelivery(job,atCounter){ if(job.key!=="me") return;
   me.cup=5; renderCup(); push(); $("#cupNote").textContent=atCounter?"새 커피를 받아 왔어요":"바리스타가 새 커피를 가져다 줬어요";
   if(A.on) clink(A.ctx.currentTime,0.18,true); }
