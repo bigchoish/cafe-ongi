@@ -10,44 +10,63 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a tall cinematic stage showing the cafe as a cutaway architectural model, with glass controls floating on it; two quiet panels below. One dark look: graphite, white oak, brass. */
+/* Layout: the 3D cafe fills the whole window; controls float on it as glass panels.
+   top-left: name and who is here · top-right: view controls and menu · bottom-left: chat · bottom-centre: actions · right drawer: sound, me, guestbook. */
 :root{
-  --bg:#0f0e0d; --surface:#171614; --surface-2:#1f1d1a; --line:rgba(236,230,221,.08); --line-2:rgba(236,230,221,.16);
-  --fg:#ece6dd; --muted:#948b82; --faint:#6c655e; --accent:#c9a46c; --accent-ink:#1a140c; --glass:rgba(17,16,14,.6);
+  --bg:#0f0e0d; --surface:#171614; --surface-2:#1f1d1a; --line:rgba(236,230,221,.1); --line-2:rgba(236,230,221,.18);
+  --fg:#ece6dd; --muted:#a39a90; --faint:#7a726a; --accent:#c9a46c; --accent-ink:#1a140c; --glass:rgba(17,16,14,.62);
   --display:"Gowun Batang","Nanum Myeongjo","AppleMyungjo",serif;
   --body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --gap:16px; --st:max(var(--gap),env(safe-area-inset-top,0px)); --sb:max(var(--gap),env(safe-area-inset-bottom,0px));
+  --sl:max(var(--gap),env(safe-area-inset-left,0px)); --sr:max(var(--gap),env(safe-area-inset-right,0px));
   color-scheme:dark;
 }
-html,body{background:var(--bg);color:var(--fg)}
+html,body{background:var(--bg);color:var(--fg);margin:0;height:100%;overflow:hidden;overscroll-behavior:none}
 [hidden]{display:none!important}
-body{font-family:var(--body);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;
-  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); padding-block:24px 56px}
-.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
-.brand{display:flex;flex-direction:column;gap:6px;min-width:0}
-.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:var(--faint);text-transform:uppercase}
-h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,3.4vw,36px);line-height:1.05;margin:0;letter-spacing:-.015em}
-.sub{margin:0;color:var(--muted);font-size:14px}
-.live{display:inline-flex;align-items:center;gap:9px;height:34px;padding:0 14px;border:1px solid var(--line);border-radius:999px;font-size:13px;color:var(--muted);white-space:nowrap}
-.live b{font-family:var(--mono);font-weight:500;color:var(--fg)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
-.dot.on{background:#8fc79f;box-shadow:0 0 0 4px rgba(143,199,159,.14)}
-
-.stage{position:relative;border-radius:20px;overflow:hidden;background:#0b0a09;border:1px solid var(--line);max-width:100%}
-.stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(130% 95% at 50% 42%,rgba(0,0,0,0) 58%,rgba(0,0,0,.38) 100%)}
-canvas{display:block;width:100%;touch-action:none;cursor:grab;outline:none}
+body{font-family:var(--body);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.stage{position:fixed;inset:0;overflow:hidden;background:#0b0a09}
+.stage::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:1;background:radial-gradient(130% 100% at 50% 45%,rgba(0,0,0,0) 62%,rgba(0,0,0,.32) 100%)}
+canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab;outline:none}
 .glass{background:var(--glass);-webkit-backdrop-filter:blur(16px) saturate(1.15);backdrop-filter:blur(16px) saturate(1.15);border:1px solid var(--line)}
-.topbar{position:absolute;z-index:2;left:14px;top:14px;right:14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;pointer-events:none}
+.hud{position:absolute;z-index:3;left:var(--sl);top:var(--st);display:flex;align-items:center;gap:12px;padding:8px 14px 8px 12px;border-radius:14px;max-width:calc(100% - 2*var(--gap))}
+.hud .brand{display:flex;flex-direction:column;line-height:1.15;min-width:0}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase;white-space:nowrap}
+h1{font-family:var(--display);font-weight:700;font-size:19px;margin:0;letter-spacing:-.01em;white-space:nowrap}
+.live{display:inline-flex;align-items:center;gap:8px;padding-left:12px;border-left:1px solid var(--line);font-size:12.5px;color:var(--muted);white-space:nowrap}
+.live b{font-family:var(--mono);font-weight:500;color:var(--fg)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint);flex:none}
+.dot.on{background:#8fc79f;box-shadow:0 0 0 4px rgba(143,199,159,.14)}
+.topbar{position:absolute;z-index:3;right:var(--sr);top:var(--st);display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;align-items:center;max-width:calc(100% - 380px);pointer-events:none}
 .topbar>*{pointer-events:auto}
-.dock{position:absolute;z-index:2;left:14px;right:14px;bottom:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:10px 12px;border-radius:16px}
+.hint{position:absolute;z-index:3;background:rgba(17,16,14,.72);color:var(--fg);left:50%;top:calc(var(--st) + 56px);transform:translateX(-50%);margin:0;padding:6px 14px;border-radius:999px;font-size:12px;color:var(--muted);white-space:nowrap;max-width:calc(100% - 2*var(--gap));overflow:hidden;text-overflow:ellipsis;transition:opacity .6s}
+.hint.fade{opacity:0;pointer-events:none}
+.dock{position:absolute;z-index:3;bottom:var(--sb);left:calc(var(--sl) + 336px);right:var(--sr);margin:0 auto;width:max-content;max-width:calc(100% - 336px - var(--sl) - var(--sr));box-sizing:border-box;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:10px 14px;padding:10px 12px;border-radius:16px}
+.stage:not(.chat-open) .dock{left:var(--sl);max-width:calc(100% - var(--sl) - var(--sr))}
 .dock .acts{display:flex;flex-wrap:wrap;gap:8px}
-.dock .spacer{flex:1}
 .cup{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--muted);min-width:0}
 .cupbar{display:inline-flex;gap:3px}
 .cupbar i{width:5px;height:16px;border-radius:2px;background:rgba(236,230,221,.14)}
 .cupbar i.f{background:var(--accent)}
-.enter{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:stretch;gap:14px;
+.chat{position:absolute;z-index:3;left:var(--sl);bottom:var(--sb);height:min(340px,calc(100% - 200px));width:320px;display:flex;flex-direction:column;border-radius:16px;overflow:hidden}
+.chat-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;font-size:12px;color:var(--muted)}
+.chat-log{flex:1;min-height:0;overflow-y:auto;padding:4px 14px 8px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45}
+.chat-log p{margin:0;overflow-wrap:anywhere}
+.chat-log b{font-weight:600;color:var(--accent);margin-right:6px}
+.chat-log .mine b{color:var(--fg)}
+.chat-log .sys{color:var(--faint);font-size:12px}
+.chat-log .ev{color:var(--faint);font-size:11.5px}
+.chat-log .ev i{font-style:normal;font-family:var(--mono);margin-left:6px;opacity:.8}
+.chat-log .pin{margin-left:6px;height:20px;padding:0 7px;border-radius:6px;border:1px solid var(--line-2);background:none;color:var(--muted);font:inherit;font-size:11px;cursor:pointer;vertical-align:1px;opacity:.75}
+.chat-log .pin:hover{opacity:1;color:var(--accent);border-color:var(--accent)}
+.chat-form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
+.chat-form input{flex:1;min-width:0;box-sizing:border-box;height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--fg);font:inherit;font-size:13px}
+.chat-form .btn{height:34px}
+.neon-ctl{display:flex;align-items:center;gap:6px}
+.sw-btn{width:16px;height:16px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer}
+.sw-btn[aria-pressed="true"]{border-color:var(--fg)}
+.neon-off{height:22px;padding:0 8px;border-radius:7px;border:1px solid var(--line-2);background:none;color:var(--muted);font:inherit;font-size:11.5px;cursor:pointer}
+.enter{position:absolute;z-index:6;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:stretch;gap:14px;
   width:min(360px,calc(100% - 32px));box-sizing:border-box;padding:22px 22px 18px;border-radius:20px;color:var(--fg);text-align:left;box-shadow:0 20px 60px rgba(0,0,0,.45)}
 .enter-head{display:flex;flex-direction:column;gap:4px}
 .enter-field{display:flex;flex-direction:column;gap:6px}
@@ -59,12 +78,11 @@ canvas{display:block;width:100%;touch-action:none;cursor:grab;outline:none}
 .enter-err{margin:-6px 0 0;font-size:12px;color:#e8a28a}
 .enter strong{font-family:var(--display);font-size:22px;font-weight:700}
 .enter-head span{font-size:13px;color:var(--muted)}
-.sitp{position:absolute;z-index:3;left:50%;bottom:86px;transform:translateX(-50%);height:38px;padding:0 16px;border-radius:999px;color:var(--fg);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;border-color:rgba(201,164,108,.6)}
+.sitp{position:absolute;z-index:3;left:50%;bottom:calc(var(--sb) + 76px);transform:translateX(-50%);height:38px;padding:0 16px;border-radius:999px;color:var(--fg);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;border-color:rgba(201,164,108,.6)}
 .sitp kbd{font-family:var(--mono);font-size:11px;padding:1px 6px;border-radius:5px;border:1px solid var(--line-2);color:var(--muted)}
-.joy{position:absolute;z-index:3;left:16px;bottom:96px;width:116px;height:116px;border-radius:50%;background:rgba(17,16,14,.45);border:1px solid var(--line-2);touch-action:none}
+.joy{position:absolute;z-index:3;left:var(--sl);bottom:calc(var(--sb) + 84px);width:116px;height:116px;border-radius:50%;background:rgba(17,16,14,.45);border:1px solid var(--line-2);touch-action:none}
 .joy span{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;transition:transform .05s;border-radius:50%;background:rgba(236,230,221,.85)}
-.nogl{position:absolute;inset:0;z-index:3;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
-.hint{margin:-6px 0 0;font-size:12.5px;color:var(--faint);text-align:center}
+.nogl{position:absolute;inset:0;z-index:2;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
 
 .btn{height:36px;padding:0 14px;border-radius:10px;border:1px solid var(--line-2);background:rgba(236,230,221,.05);color:var(--fg);
   font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
@@ -80,15 +98,23 @@ canvas{display:block;width:100%;touch-action:none;cursor:grab;outline:none}
 button:focus-visible,input:focus-visible,canvas:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .focus-t{font-family:var(--mono);font-variant-numeric:tabular-nums}
 
-.panels{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
-.panel h2{margin:0;font-family:var(--display);font-size:17px;font-weight:700;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 12px}
+/* drawer: sound and scenery, me, guestbook */
+.drawer{position:absolute;z-index:5;top:0;right:0;bottom:0;width:min(400px,100%);box-sizing:border-box;display:flex;flex-direction:column;background:rgba(19,18,16,.9);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-left:1px solid var(--line);
+  padding:var(--st) var(--sr) 0 20px;box-shadow:-20px 0 60px rgba(0,0,0,.35)}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:12px}
+.drawer-head .seg{flex:1}
+.drawer-head .seg button{flex:1}
+.drawer-body{flex:1;min-height:0;overflow-y:auto;padding:4px 2px calc(var(--sb) + 8px);display:flex;flex-direction:column;gap:14px;overscroll-behavior:contain}
+.icon-btn{width:34px;height:34px;padding:0;justify-content:center;font-size:18px;line-height:1}
+.panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel h2{margin:0;font-family:var(--display);font-size:18px;font-weight:700;display:flex;flex-direction:column;gap:2px}
 .panel h2 small{font-family:var(--body);font-weight:400;font-size:12px;color:var(--faint)}
+.intro{margin:0;color:var(--muted);font-size:13px}
 .label{font-size:12px;color:var(--muted)}
-.sliders{display:grid;grid-template-columns:1fr 1fr;gap:6px 22px}
-.slider{display:grid;grid-template-columns:62px 1fr 26px;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.sliders{display:grid;grid-template-columns:1fr;gap:4px}
+.slider{display:grid;grid-template-columns:70px 1fr 28px;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
 .slider output{font-family:var(--mono);font-size:11.5px;color:var(--faint);text-align:right;font-variant-numeric:tabular-nums}
-input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;margin:0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0}
 input[type=range]::-webkit-slider-runnable-track{height:2px;border-radius:2px;background:rgba(236,230,221,.16)}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-6px;border-radius:50%;background:var(--fg);border:0}
 input[type=range]::-moz-range-track{height:2px;background:rgba(236,230,221,.16)}
@@ -98,7 +124,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;bac
 input[type=text]{box-sizing:border-box;font:inherit;color:var(--fg);background:var(--surface-2);border:1px solid var(--line);border-radius:10px;height:38px;padding:0 12px;width:100%;min-width:0}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .stat{padding:12px 0 10px;display:flex;flex-direction:column;gap:2px}
-.stat+.stat{padding-left:16px;border-left:1px solid var(--line)}
+.stat+.stat{padding-left:14px;border-left:1px solid var(--line)}
 .stat b{font-family:var(--mono);font-weight:500;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
 .stat span{font-size:12px;color:var(--faint)}
 .people{display:flex;flex-wrap:wrap;gap:6px}
@@ -106,78 +132,63 @@ input[type=text]{box-sizing:border-box;font:inherit;color:var(--fg);background:v
 .chip .sw{width:8px;height:8px;border-radius:50%;flex:none}
 .chip em{font-style:normal;color:var(--faint)}
 .chip.me{border-color:rgba(201,164,108,.5)}
-footer{font-size:12.5px;color:var(--faint);line-height:1.75}
-footer p{margin:0;max-width:78ch}
-
-@media (max-width:860px){ .panels{grid-template-columns:1fr} }
-.chat{position:absolute;z-index:2;right:14px;bottom:84px;height:min(330px,calc(100% - 160px));width:280px;display:flex;flex-direction:column;border-radius:16px;overflow:hidden}
-.chat-head{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;font-size:12px;color:var(--muted)}
-.chat-log{flex:1;min-height:0;overflow-y:auto;padding:4px 14px 8px;display:flex;flex-direction:column;gap:6px;font-size:13px;line-height:1.45}
-.chat-log p{margin:0;overflow-wrap:anywhere}
-.chat-log b{font-weight:600;color:var(--accent);margin-right:6px}
-.chat-log .mine b{color:var(--fg)}
-.chat-log .sys{color:var(--faint);font-size:12px}
-.neon-ctl{display:flex;align-items:center;gap:6px}
-.neon-ctl[hidden]{display:none}
-.sw-btn{width:16px;height:16px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer}
-.sw-btn[aria-pressed="true"]{border-color:var(--fg)}
-.neon-off{height:22px;padding:0 8px;border-radius:7px;border:1px solid var(--line-2);background:none;color:var(--muted);font:inherit;font-size:11.5px;cursor:pointer}
-.chat-log .pin{margin-left:6px;height:20px;padding:0 7px;border-radius:6px;border:1px solid var(--line-2);background:none;color:var(--muted);font:inherit;font-size:11px;cursor:pointer;vertical-align:1px;opacity:.75}
-.chat-log .pin:hover{opacity:1;color:var(--accent);border-color:var(--accent)}
-.chat-log .ev{color:var(--faint);font-size:11.5px}
-.chat-log .ev i{font-style:normal;font-family:var(--mono);margin-left:6px;opacity:.8}
-.gb{margin-top:0}
 .gb-form{display:flex;gap:8px}
 .gb-form input{flex:1;min-width:0;box-sizing:border-box;height:38px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);color:var(--fg);font:inherit}
-.gb-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
-.gb-list li{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0;background:var(--surface-2)}
+.gb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.gb-list li{border:1px solid var(--line);border-radius:12px;padding:11px 13px;display:flex;flex-direction:column;gap:6px;min-width:0;background:var(--surface-2)}
 .gb-list .who{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:12px;color:var(--faint)}
 .gb-list .who b{color:var(--accent);font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gb-list p{margin:0;font-size:13.5px;line-height:1.55;overflow-wrap:anywhere}
 .gb-list .del{align-self:flex-end;height:22px;padding:0 8px;border-radius:7px;border:1px solid var(--line-2);background:none;color:var(--faint);font:inherit;font-size:11px;cursor:pointer}
 .gb-empty{color:var(--faint);font-size:13px;margin:0}
-.chat-form{display:flex;gap:6px;padding:8px;border-top:1px solid var(--line)}
-.chat-form input{flex:1;min-width:0;box-sizing:border-box;height:34px;padding:0 10px;border-radius:9px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:var(--fg);font:inherit;font-size:13px}
-.chat-form .btn{height:34px}
+.note{font-size:12px;color:var(--faint);line-height:1.7;margin:4px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+
+@media (max-width:1100px){ .topbar{max-width:calc(100% - 330px)} }
 @media (max-width:760px){
-  .chat{position:static;width:auto;height:260px;border-radius:0;border:0;border-top:1px solid var(--line);background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none}
-  .dock{position:static;border-radius:0;border:0;border-top:1px solid var(--line);background:var(--surface);-webkit-backdrop-filter:none;backdrop-filter:none;padding:12px}
-  .dock .spacer{display:none}
-  .topbar{left:10px;top:10px;right:10px}
-  .sliders{grid-template-columns:1fr}
-  .sitp{bottom:auto;top:calc(var(--cvh,420px) - 54px);left:auto;right:14px;transform:none}
-  .joy{bottom:auto;top:calc(var(--cvh,420px) - 132px)}
-  .enter{top:calc(var(--cvh,420px) / 2)}
+  :root{--gap:10px}
+  .hud{padding:6px 10px;gap:10px;border-radius:12px}
+  .hud .eyebrow{display:none} h1{font-size:16px}
+  .topbar{left:var(--sl);right:var(--sr);top:calc(var(--st) + 46px);max-width:none;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .topbar::-webkit-scrollbar{display:none}
+  .topbar .btn{height:32px;padding:0 11px;font-size:12.5px;flex:none} .topbar .seg{flex:none} .topbar .seg button{height:26px;padding:0 10px;font-size:12px}
+  .hint{display:none}
+  #chatToggle,#menuBtn{order:-1}
+  .dock{left:var(--sl)!important;right:var(--sr);width:auto;max-width:none;flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;padding:8px;gap:8px;border-radius:14px}
+  .dock::-webkit-scrollbar{display:none}
+  .dock .acts{flex-wrap:nowrap} .dock .btn{height:34px;padding:0 12px;font-size:13px;flex:none} .dock .seg,.dock .cup{flex:none}
+  .chat{left:var(--sl);right:var(--sr);width:auto;bottom:calc(var(--sb) + 60px);height:min(300px,42%)}
+  .joy{bottom:calc(var(--sb) + 66px)}
+  .stage.chat-open .joy{display:none}
+  .sitp{bottom:calc(var(--sb) + 66px);left:auto;right:var(--sr);transform:none}
+  .stage.chat-open .sitp{bottom:calc(var(--sb) + 70px + min(300px,42%))}
+  .drawer{width:100%;padding-left:var(--sl)}
   .enter{padding:18px 16px 14px;gap:12px}
 }
-@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}.hint{transition:none}}
 </style>
 
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="brand">
-      <span class="eyebrow" id="eyebrow">Seongsu · Study Café</span>
-      <h1>카페 온기</h1>
-      <p class="sub" id="sub">노출콘크리트와 화이트오크, 높은 통창. 모르는 사람들과 조용히 함께 작업하는 가상 카페</p>
-    </div>
+<div class="stage" id="stage">
+  <canvas id="cv" tabindex="0" aria-label="3D 카페 내부. 끌어서 360도로 둘러보고, 방향키로도 시점을 돌릴 수 있습니다. 빈 의자를 누르면 걸어가서 앉습니다."></canvas>
+  <header class="hud glass">
+    <div class="brand"><span class="eyebrow" id="eyebrow">Seongsu · Study Café</span><h1>카페 온기</h1></div>
     <div class="live" aria-live="polite"><span class="dot" id="dot"></span><span id="liveText">카페에 들어가는 중</span></div>
   </header>
-
-  <div class="stage" id="stage">
-    <canvas id="cv" tabindex="0" aria-label="3D 카페 내부. 끌어서 360도로 둘러보고, 방향키로도 시점을 돌릴 수 있습니다. 빈 의자를 누르면 걸어가서 앉습니다."></canvas>
-    <div class="topbar">
-      <div class="seg" role="group" aria-label="시점" id="viewSeg">
-        <button type="button" data-view="orbit" aria-pressed="true">카페 전체</button>
-        <button type="button" data-view="seat" aria-pressed="false">내 자리 시점</button>
-      </div>
-      <button class="btn" id="moveBtn" type="button" aria-pressed="false">자리 옮기기</button>
-      <button class="btn" id="walkBtn" type="button">일어나서 걷기</button>
-      <button class="btn" id="resetView" type="button">처음 시점</button>
-      <button class="btn" id="chatToggle" type="button" aria-pressed="true" aria-controls="chat">채팅</button>
+  <div class="topbar">
+    <div class="seg" role="group" aria-label="시점" id="viewSeg">
+      <button type="button" data-view="orbit" aria-pressed="true">카페 전체</button>
+      <button type="button" data-view="seat" aria-pressed="false">내 자리 시점</button>
     </div>
+    <button class="btn" id="moveBtn" type="button" aria-pressed="false">자리 옮기기</button>
+    <button class="btn" id="walkBtn" type="button">일어나서 걷기</button>
+    <button class="btn" id="resetView" type="button">처음 시점</button>
+    <button class="btn" id="chatToggle" type="button" aria-pressed="true" aria-controls="chat">채팅</button>
+    <button class="btn" id="menuBtn" type="button" aria-expanded="false" aria-controls="drawer">분위기 · 방명록</button>
+    <button class="btn" id="fsBtn" type="button" hidden>전체화면</button>
+  </div>
+  <p class="hint glass" id="hint">끌어서 둘러보기 · WASD로 걷거나 바닥을 클릭해 이동 · 빈 의자를 누르거나 가까이에서 E로 앉기 · 스페이스바로 한 모금 · Q 손 인사 · R 목 인사</p>
     <section class="chat glass" id="chat" aria-label="채팅">
       <div class="chat-head"><span>카페 대화</span>
         <div class="neon-ctl" id="neonCtl" hidden><span>네온</span>
@@ -218,11 +229,18 @@ footer p{margin:0;max-width:78ch}
       <p class="enter-note">들어가면 매장 소리와 음악이 함께 켜져요</p>
     </form>
     <div class="nogl" id="noGL" hidden>이 브라우저에서는 3D 화면을 그릴 수 없어요. 소리와 기록 기능은 그대로 쓸 수 있습니다.</div>
-  </div>
-  <p class="hint" id="hint">끌어서 둘러보기 · WASD로 걷거나 바닥을 클릭해 이동 · 빈 의자를 누르거나 가까이에서 E로 앉기 · 스페이스바로 한 모금</p>
-
-  <div class="panels">
-    <section class="panel" aria-labelledby="h-snd">
+  <aside class="drawer" id="drawer" hidden aria-label="분위기, 오늘의 나, 방명록">
+    <div class="drawer-head">
+      <div class="seg" role="tablist" aria-label="메뉴" id="drawerTabs">
+        <button type="button" role="tab" data-tab="snd" aria-pressed="true">분위기</button>
+        <button type="button" role="tab" data-tab="me" aria-pressed="false">오늘의 나</button>
+        <button type="button" role="tab" data-tab="gb" aria-pressed="false">방명록</button>
+      </div>
+      <button class="btn icon-btn" id="drawerClose" type="button" aria-label="메뉴 닫기">×</button>
+    </div>
+    <div class="drawer-body">
+    <section class="panel" data-pane="snd" aria-labelledby="h-snd">
+      <p class="intro" id="sub">노출콘크리트와 화이트오크, 높은 통창. 모르는 사람들과 조용히 함께 작업하는 가상 카페</p>
       <h2 id="h-snd">분위기 <small>매장 녹음은 직접 녹음한 실제 카페 소리, 나머지는 실시간 합성</small></h2>
       <div class="sliders">
         <div class="slider"><label for="vReal">매장 녹음</label><input id="vReal" type="range" min="0" max="100"><output id="oReal"></output></div>
@@ -257,7 +275,7 @@ footer p{margin:0;max-width:78ch}
       </div>
     </section>
 
-    <section class="panel" aria-labelledby="h-me">
+    <section class="panel" data-pane="me" aria-labelledby="h-me" hidden>
       <h2 id="h-me">오늘의 나 <small>기록은 이 브라우저에만 남아요</small></h2>
       <div class="row" style="flex-wrap:nowrap">
         <label class="label" for="nick" style="flex:none">이름표</label>
@@ -281,19 +299,17 @@ footer p{margin:0;max-width:78ch}
         <div class="people" id="people" aria-labelledby="h-people"></div>
       </div>
     </section>
-  </div>
 
-  <section class="panel gb" aria-labelledby="h-gb">
+  <section class="panel gb" data-pane="gb" aria-labelledby="h-gb" hidden>
     <h2 id="h-gb">방명록 <small id="gbCount">다녀간 흔적을 남겨 주세요</small></h2>
     <form id="gbForm" class="gb-form"><input id="gbInput" type="text" maxlength="100" placeholder="카페에 한마디 남기기 (100자까지)" autocomplete="off" aria-label="방명록에 남길 말"><button class="btn primary" type="submit">남기기</button></form>
     <ol class="gb-list" id="gbList"></ol>
     <p class="gb-empty" id="gbEmpty">아직 남겨진 글이 없어요. 첫 번째 손님이 되어 주세요.</p>
     <button class="btn" id="gbMore" type="button" hidden>더 보기</button>
   </section>
-
-  <footer>
-    <p>같은 링크를 연 사람들은 이 카페에 함께 앉아 서로의 모습이 보이고, 누가 들어오고 나갔는지는 채팅창에 시간과 함께 남습니다. 매장 소리는 실제 카페에서 직접 녹음한 소리이고, 음악과 말소리, 원두 가는 소리는 브라우저가 실시간으로 합성한 소리예요.</p>
-  </footer>
+      <p class="note">같은 링크를 연 사람들은 이 카페에 함께 앉아 서로의 모습이 보이고, 누가 들어오고 나갔는지는 채팅창에 시간과 함께 남습니다. 매장 소리는 실제 카페에서 직접 녹음한 소리이고, 음악과 말소리, 원두 가는 소리는 브라우저가 실시간으로 합성한 소리예요.</p>
+    </div>
+  </aside>
 </div>
 
 <script src="config.js"></script>
@@ -1237,7 +1253,7 @@ function camTargets(){
 function setView(m){ camS.mode=m; if(m==="seat"){ camS.fyaw=me.seat>=0?seatRot(me.seat):0; camS.fpitch=0.02; }
   document.querySelectorAll("#viewSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.view===m)));
   if(CAM){ CAM.fov=m==="seat"?70:38; CAM.updateProjectionMatrix(); } }
-function resetView(){ if(camS.mode==="seat"){ camS.fyaw=me.seat>=0?seatRot(me.seat):0; camS.fpitch=0.02; } else { const tall=W&&W/H<1.2; camS.yaw=0.42; camS.pitch=tall?0.72:0.5; camS.dist=tall?16.5:12.5; } }
+function resetView(){ if(camS.mode==="seat"){ camS.fyaw=me.seat>=0?seatRot(me.seat):0; camS.fpitch=0.02; } else { const tall=W&&W/H<1.2; camS.yaw=0.42; camS.pitch=tall?0.78:0.5; camS.dist=tall?19:12.5; } }
 
 function initScene(){
   if(!window.THREE){ $("#noGL").hidden=false; return; }
@@ -1257,8 +1273,7 @@ function initScene(){
     const moving=tick(now,dt); if(moving||frameN%5===0) R.shadowMap.needsUpdate=true; R.render(S,CAM); })(last);
   setInterval(()=>{ drawClock(clockTex._c.getContext("2d"),256,256); clockTex.needsUpdate=true; const t=tod(); if(t!==curTod){curTod=t;applyEnv();} },1000);
 }
-function sizeStage(){ const w=stageEl.clientWidth; const narrow=w<760; const h=Math.round(narrow?Math.min(w*1.12,window.innerHeight*0.72):Math.min(w*0.56,window.innerHeight*0.76)); if(w===W&&h===H) return; W=w; H=h;
-  cv.style.height=h+"px"; stageEl.style.setProperty("--cvh",h+"px"); R.setSize(w,h,false); CAM.aspect=w/h; CAM.updateProjectionMatrix(); if(!sizeStage.done){ sizeStage.done=true; resetView(); } }
+function sizeStage(){ const w=stageEl.clientWidth, h=stageEl.clientHeight; if(!w||!h||(w===W&&h===H)) return; W=w; H=h; R.setSize(w,h,false); CAM.aspect=w/h; CAM.updateProjectionMatrix(); if(!sizeStage.done){ sizeStage.done=true; resetView(); } }
 function applyEnv(){ if(!S) return; const t=curTod, night=t==="night"||t==="dusk", day=t==="day";
   drawBackdrop(backdropTex._c.getContext("2d"),2048,1024); backdropTex.needsUpdate=true;
   const lf=day?0.45:t==="dawn"?0.7:1; lamps.forEach(([L,b])=>L.intensity=b*lf); warmEm.forEach(m=>m.emissiveIntensity=day?0.9:1.5); glows.forEach(g=>g.s.material.opacity=g.base*(day?0.3:1));
@@ -1544,7 +1559,8 @@ $("#chatForm").addEventListener("submit",e=>{ e.preventDefault(); if(!entered){ 
   if(!room||!room.connected()){ addLine("","아직 카페에 연결되지 않아 보낼 수 없어요. 혼자 있을 때는 내 말풍선만 보여요.",false,true); bubbles.set("me",{text,until:performance.now()+7000}); inp.value=""; return; }
   lastSend=Date.now(); room.emit("chat",{text,nick:me.nick}).catch(err=>{ addLine("",err&&err.code==="not_permitted"?"이 카페에서는 보기 권한만 있어 채팅을 보낼 수 없어요.":"메시지를 보내지 못했어요. 잠시 후 다시 시도해 주세요.",false,true); });
   inp.value=""; });
-if(innerWidth>760&&innerWidth<1100){ $("#chat").hidden=true; $("#chatToggle").setAttribute("aria-pressed","false"); }
+function syncChat(){ const open=!$("#chat").hidden; $("#chatToggle").setAttribute("aria-pressed",String(open)); stageEl.classList.toggle("chat-open",open); }
+if(innerWidth<1100){ $("#chat").hidden=true; } syncChat();
 // ---------- neon sign: the host picks a chat line and it lights up on the wall for everyone ----------
 const NEON={warm:"#ffcf7a",pink:"#ff4fa3",mint:"#3ff2c4",blue:"#59a8ff"};
 let neonState=null, neonTex=null, neonMat=null, neonGlow=null, neonLight=null, neonFlick=0, canPin=false, neonDb=null, neonColor=store.get("neonColor","pink"), neonTs=0;
@@ -1619,7 +1635,20 @@ $("#gbForm").addEventListener("submit",async ev=>{ ev.preventDefault(); const in
   catch(err){ inp.setCustomValidity(err&&err.message==="signin"?"로그인한 손님만 방명록을 남길 수 있어요.":"카페에 연결된 뒤에 남길 수 있어요. 잠시 후 다시 시도해 주세요."); inp.reportValidity(); setTimeout(()=>inp.setCustomValidity(""),2500); } });
 $("#gbMore").addEventListener("click",()=>{ gbShown+=24; renderGb(); });
 renderGb();
-$("#chatToggle").addEventListener("click",()=>{ const c=$("#chat"); c.hidden=!c.hidden; $("#chatToggle").setAttribute("aria-pressed",String(!c.hidden)); });
+$("#chatToggle").addEventListener("click",()=>{ const c=$("#chat"); c.hidden=!c.hidden; syncChat(); if(!c.hidden&&!coarse) $("#chatInput").focus(); });
+// menu drawer: sound and scenery, me, guestbook
+function setTab(t){ document.querySelectorAll("#drawerTabs button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.tab===t))); document.querySelectorAll("[data-pane]").forEach(p=>p.hidden=p.dataset.pane!==t); store.set("tab",t); }
+function setDrawer(open){ $("#drawer").hidden=!open; $("#menuBtn").setAttribute("aria-expanded",String(open)); $("#menuBtn").setAttribute("aria-pressed",String(open)); if(open) $("#drawerClose").focus(); }
+document.querySelectorAll("#drawerTabs button").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+$("#menuBtn").addEventListener("click",()=>setDrawer($("#drawer").hidden)); $("#drawerClose").addEventListener("click",()=>{ setDrawer(false); $("#menuBtn").focus(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("#drawer").hidden){ setDrawer(false); $("#menuBtn").focus(); } });
+setTab(["snd","me","gb"].includes(store.get("tab","snd"))?store.get("tab","snd"):"snd");
+// browser full screen, where the browser allows it
+(()=>{ const b=$("#fsBtn"), d=document, el=d.documentElement; const can=d.fullscreenEnabled||d.webkitFullscreenEnabled; if(!can) return; b.hidden=false;
+  const isFs=()=>!!(d.fullscreenElement||d.webkitFullscreenElement); const paint=()=>{ b.textContent=isFs()?"전체화면 끄기":"전체화면"; b.setAttribute("aria-pressed",String(isFs())); };
+  b.addEventListener("click",()=>{ try{ if(isFs()) (d.exitFullscreen||d.webkitExitFullscreen).call(d); else { const r=(el.requestFullscreen||el.webkitRequestFullscreen).call(el); if(r&&r.catch) r.catch(()=>{ b.hidden=true; }); } }catch(e){ b.hidden=true; } });
+  d.addEventListener("fullscreenchange",paint); d.addEventListener("webkitfullscreenchange",paint); paint(); })();
+setTimeout(()=>$("#hint").classList.add("fade"),20000);
 function esc(s){return s.replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));}
 function renderPeople(){ const all=[Object.assign({me:true},me),...others()];
   $("#people").innerHTML=all.map(g=>{ const f=g.fe>Date.now(); return `<span class="chip${g.me?" me":""}"><span class="sw" style="background:${TONES[g.tone]}"></span>${esc(g.nick)}${g.me?" (나)":""} <em>${g.seat<0?"둘러보는 중":f?"집중 중":MODE_LABEL[g.mode]} · ${g.cups}잔</em></span>`; }).join("");
