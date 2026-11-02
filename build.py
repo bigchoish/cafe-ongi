@@ -22,7 +22,7 @@ shim = r"""<script>
       ws.onopen = function(){ backoff = 500; };
       ws.onmessage = function(ev){ var m; try { m = JSON.parse(ev.data); } catch(e){ return; }
         if (m.t === "welcome"){ myId = m.id; var old = Array.from(peers.values()); peers.clear(); peers.set(myId, mk(myId, myPres)); m.peers.forEach(function(p){ peers.set(p.id, mk(p.id, p.presence)); });
-          fire({ joined:Array.from(peers.values()), left:old }); setConn(true); ws.send(JSON.stringify({ t:"presence", presence:myPres })); (m.history||[]).forEach(function(h){ deliver(h, true); }); isHost = !!m.host; hostReady(isHost); if (m.neon) deliver({ topic:"neon", id:"server", data:m.neon }, true); }
+          fire({ joined:Array.from(peers.values()), left:old }); setConn(true); ws.send(JSON.stringify({ t:"presence", presence:myPres })); (m.history||[]).forEach(function(h){ deliver(h, true); }); isHost = !!m.host; hostReady(isHost); if (m.neon) deliver({ topic:"neon", id:"server", data:m.neon }, true); deliver({ topic:"gb", id:"server", data:{ op:"all", entries:m.gb||[] } }, true); }
         else if (m.t === "join"){ var p = mk(m.id, m.presence); peers.set(m.id, p); fire({ joined:[p] }); }
         else if (m.t === "presence"){ var u = mk(m.id, m.presence); peers.set(m.id, u); fire({ updated:[u] }); }
         else if (m.t === "leave"){ var l = peers.get(m.id); if (l){ peers.delete(m.id); fire({ left:[l] }); } }
@@ -52,9 +52,9 @@ shim = r"""<script>
 })();
 </script>
 """
-split = src.index('<div class="wrap">')
+split = src.index('<div class="stage" id="stage">')
 head, body = src[:split], src[split:]
-reset = "<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>\n"
+reset = "<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>\n"
 meta = '<meta name="description" content="함께 앉아 조용히 작업하는 3D 가상 카페. 음악과 빗소리, 바리스타 소리, 채팅.">\n<meta property="og:title" content="카페 온기">\n<meta property="og:description" content="함께 앉아 조용히 작업하는 3D 가상 카페">\n'
 body = body.replace('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>', '<script src="config.js"></script>\n' + shim + '<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>', 1)
 body = body.replace("다른 손님의 모습은 같은 링크를 연 사람에게만 보이고", "같은 주소로 들어온 사람들은 서로의 모습과 채팅이 보이고")
