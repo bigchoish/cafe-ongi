@@ -195,6 +195,8 @@ footer p{margin:0;max-width:78ch}
         <button class="btn primary" id="sipBtn" type="button">커피 한 모금</button>
         <button class="btn" id="pageBtn" type="button">책장 넘기기</button>
         <button class="btn" id="focusBtn" type="button">25분 집중 시작</button>
+        <button class="btn" id="waveBtn" type="button" title="단축키 Q">손 인사</button>
+        <button class="btn" id="bowBtn" type="button" title="단축키 R">목 인사</button>
       </div>
       <div class="seg" role="group" aria-label="지금 하는 일" id="modeSeg">
         <button type="button" data-mode="type" aria-pressed="true">노트북 작업</button>
@@ -367,18 +369,18 @@ const me={
   nick:store.get("nick",NICKS[ri(NICKS.length)]),
   seat:clamp(store.get("seat",-1)|0,-1,SEATS-1), px:5.3, pz:4.2, pr:0,
   mode:store.get("mode","type"),
-  sip:0,page:0,cup:5,cups:stats.cups,ses:stats.ses,fe:0,fd:0,
+  sip:0,page:0,gest:0,gk:"wave",cup:5,cups:stats.cups,ses:stats.ses,fe:0,fd:0,
   tone:store.get("tone",ri(TONES.length)),hair:store.get("hair",ri(4)),hc:store.get("hc",ri(HAIRC.length)),sex:store.get("sex",Math.random()<0.5?"m":"f")
 };
 if(!["type","read","rest"].includes(me.mode)) me.mode="type"; if(!["m","f"].includes(me.sex)) me.sex="m";
 let weather=store.get("wxVer",0)===2?store.get("wx","clear"):"clear"; if(!["rain","snow","clear"].includes(weather)) weather="clear"; store.set("wxVer",2); store.set("wx",weather);
-const myAnim={sipAt:-1e9,pageAt:-1e9};
+const myAnim={sipAt:-1e9,pageAt:-1e9,gestAt:-1e9,gk:"wave"};
 
 // ---------- room ----------
 let room=null, roomState="connecting";
 let entered=false;
 function push(){ if(!room||!entered) return;
-  room.presence({nick:me.nick,seat:me.seat,mode:me.mode,sip:me.sip,page:me.page,cup:me.cup,cups:me.cups,ses:me.ses,fe:me.fe,fd:me.fd,tone:me.tone,hair:me.hair,hc:me.hc,sex:me.sex,px:+me.px.toFixed(2),pz:+me.pz.toFixed(2),pr:+me.pr.toFixed(2)}).catch(()=>{});
+  room.presence({nick:me.nick,seat:me.seat,mode:me.mode,sip:me.sip,page:me.page,gest:me.gest,gk:me.gk,cup:me.cup,cups:me.cups,ses:me.ses,fe:me.fe,fd:me.fd,tone:me.tone,hair:me.hair,hc:me.hc,sex:me.sex,px:+me.px.toFixed(2),pz:+me.pz.toFixed(2),pr:+me.pr.toFixed(2)}).catch(()=>{});
 }
 const anims=new Map();
 function sanitize(p){
@@ -388,7 +390,7 @@ function sanitize(p){
   return {peer:p.peer,isMe:p.isMe,
     nick:(typeof q.nick==="string"?q.nick:"손님").replace(/[\u0000-\u001f\u007f​-‏‪-‮]/g,"").trim().slice(0,14)||"손님",
     seat,mode:["type","read","rest"].includes(q.mode)?q.mode:"rest",
-    sip:Number(q.sip)||0,page:Number(q.page)||0,cup:int(q.cup,0,5,5),cups:int(q.cups,0,99,0),ses:int(q.ses,0,99,0),
+    sip:Number(q.sip)||0,page:Number(q.page)||0,gest:Number(q.gest)||0,gk:q.gk==="bow"?"bow":"wave",cup:int(q.cup,0,5,5),cups:int(q.cups,0,99,0),ses:int(q.ses,0,99,0),
     fe:Number(q.fe)||0,fd:Number(q.fd)||0,tone:int(q.tone,0,TONES.length-1,0),hair:int(q.hair,0,3,0),hc:int(q.hc,0,HAIRC.length-1,0),sex:q.sex==="f"?"f":q.sex==="m"?"m":(q.hair===1||q.hair===3?"f":"m"),px:Number.isFinite(q.px)?clamp(q.px,-6.8,6.8):5.3,pz:Number.isFinite(q.pz)?clamp(q.pz,-4.8,4.8):4.2,pr:Number.isFinite(q.pr)?q.pr:0};
 }
 function others(){ if(!room) return []; return room.peers().filter(p=>!p.sameTab&&p.kind==="viewer").map(sanitize).filter(Boolean); }
@@ -406,15 +408,16 @@ function logEvent(text){ const log=$("#chatLog"); if(!log) return; const p=docum
 function onPeers(ch){
   const now=performance.now(), armed=now>=logArmedAt;
   for(const p of ch.joined){ if(p.sameTab||p.kind!=="viewer") continue; const s=sanitize(p);
-    if(s) anims.set(p.peer,{sip:s.sip,page:s.page,sipAt:-1e9,pageAt:-1e9});
+    if(s) anims.set(p.peer,{sip:s.sip,page:s.page,gest:s.gest,gk:s.gk,sipAt:-1e9,pageAt:-1e9,gestAt:-1e9});
     if(!armed){ peerNick.set(p.peer,s?s.nick:null); continue; }
     if(s){ peerNick.set(p.peer,s.nick); logEvent(s.nick+"님이 들어왔어요"); } else pendingJoin.add(p.peer); }
   for(const p of ch.updated){ if(p.sameTab) continue; const s=sanitize(p); if(!s) continue;
     if(pendingJoin.has(p.peer)){ pendingJoin.delete(p.peer); logEvent(s.nick+"님이 들어왔어요"); }
     peerNick.set(p.peer,s.nick);
-    const a=anims.get(p.peer)||{sip:s.sip,page:s.page,sipAt:-1e9,pageAt:-1e9};
+    const a=anims.get(p.peer)||{sip:s.sip,page:s.page,gest:s.gest,gk:s.gk,sipAt:-1e9,pageAt:-1e9,gestAt:-1e9};
     if(s.sip!==a.sip){a.sip=s.sip;a.sipAt=now; if(A.on) sfxSip(0.22);}
     if(s.page!==a.page){a.page=s.page;a.pageAt=now; if(A.on) sfxPage(0.18);}
+    if(s.gest!==a.gest){a.gest=s.gest;a.gk=s.gk;a.gestAt=now; bubbles.set(p.peer,{text:GEST_TEXT[s.gk],until:now+2200}); }
     if(s.cup===0&&s.seat>=0) enqueueDelivery(p.peer);
     anims.set(p.peer,a); }
   for(const p of ch.left){ anims.delete(p.peer); if(p.sameTab) continue;
@@ -1118,10 +1121,13 @@ function makeChar(apron){
   const brows=[], lashes=[]; for(const s_ of [-1,1]){ const b=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.012,0.01),EYE); b.position.set(s_*0.077,0.04,-0.196); b.rotation.z=s_*0.12; hg.add(b); brows.push(b);
     const l=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.006,0.008),EYE); l.position.set(s_*0.098,0.012,-0.193); l.rotation.z=s_*-0.5; hg.add(l); lashes.push(l); }
   const lips=new THREE.Mesh(new THREE.SphereGeometry(0.018,10,6),std(0xc96a66,{roughness:0.5})); lips.scale.set(1.4,0.5,0.4); lips.position.set(0,-0.095,-0.192); hg.add(lips);
-  const arms={}; for(const s of [-1,1]){ const a=new THREE.Group(); a.position.set(s*0.25,1.0,0); g.add(a);
-    const u=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.05,0.4,12),m.sw); u.position.y=-0.2; a.add(u);
-    const hd=new THREE.Mesh(new THREE.SphereGeometry(0.052,12,8),SK); hd.position.y=-0.41; a.add(hd); arms[s]=a; }
-  const hcup=new THREE.Group(); hcup.position.set(0,-0.43,-0.04); hcup.rotation.x=-2.0; arms[1].add(hcup); makeCup(hcup); hcup.visible=false;
+  // arms bend at the elbow, so a cup can come up to the mouth and a hand can wave
+  const arms={}, elbows={}; for(const s of [-1,1]){ const a=new THREE.Group(); a.position.set(s*0.25,1.0,0); g.add(a);
+    const u=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.052,0.21,12),m.sw); u.position.y=-0.1; a.add(u);
+    const eb=new THREE.Group(); eb.position.y=-0.2; a.add(eb); eb.add(new THREE.Mesh(new THREE.SphereGeometry(0.052,12,8),m.sw));
+    const f=new THREE.Mesh(new THREE.CylinderGeometry(0.052,0.05,0.2,12),m.sw); f.position.y=-0.1; eb.add(f);
+    const hd=new THREE.Mesh(new THREE.SphereGeometry(0.052,12,8),SK); hd.position.y=-0.21; eb.add(hd); arms[s]=a; elbows[s]=eb; }
+  const hcup=new THREE.Group(); hcup.position.set(0,-0.23,-0.04); hcup.rotation.x=-2.0; elbows[1].add(hcup); makeCup(hcup); hcup.visible=false;
   const book=new THREE.Group(); book.position.set(0,0.95,-0.34); book.rotation.x=0.75; g.add(book);
   for(const s of [-1,1]){ const p=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.02,0.21),PAPER); p.position.set(s*0.075,0,0); p.rotation.z=s*0.18; book.add(p);
     const cv_=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.012,0.22),COVER); cv_.position.set(s*0.078,-0.014,0); cv_.rotation.z=s*0.18; book.add(cv_); }
@@ -1129,7 +1135,7 @@ function makeChar(apron){
   const tag=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,sizeAttenuation:false})); tag.renderOrder=10; tag.position.y=1.82; g.add(tag);
   const bubble=new THREE.Sprite(new THREE.SpriteMaterial({transparent:true,depthTest:false,sizeAttenuation:false})); bubble.renderOrder=11; bubble.position.y=2.02; bubble.visible=false; g.add(bubble);
   g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; } });
-  return {bubble,bubbleKey:"",g,m,hg,hair,bun,cap,band,pom,long,fringe,bob,pony,brows,lashes,lips,body,sho,apron:apronM,arms,hcup,book,flip,tag,legSit,legStand,tagKey:"",cur:{aL:0.4,aR:0.4,zL:0,zR:0,head:0,lift:0}};
+  return {bubble,bubbleKey:"",g,m,hg,hair,bun,cap,band,pom,long,fringe,bob,pony,brows,lashes,lips,body,sho,apron:apronM,arms,elbows,hcup,book,flip,tag,legSit,legStand,tagKey:"",cur:{aL:0.4,aR:0.4,zL:0,zR:0,exR:0,ezR:0,head:0,lift:0}};
 }
 function styleChar(ch,g){
   lin(ch.m.sw.color.set(TONES[g.tone])); lin(ch.m.hair.color.set(HAIRC[g.hc])); lin(ch.m.hat.color.set(TONES[(g.tone+3)%TONES.length]));
@@ -1151,26 +1157,36 @@ function tagTexture(ch,label,isMe,focus){
   ch.tag.scale.set(0.17,0.032,1);
 }
 const lerp=(a,b,t)=>a+(b-a)*t;
+const SIP_A=1.35, SIP_Z=-0.35, SIP_EX=0.7, SIP_EZ=-0.5, SIP_HEAD=0.12, CUP_TIP=0.6, WAVE_A=-0.15, WAVE_Z=1.35, WAVE_EZ=1.3, BOW_HEAD=-0.5;
+const _qa=new THREE.Quaternion(), _qt=new THREE.Quaternion(), _ex=new THREE.Vector3(1,0,0);
+const GEST_TEXT={wave:"👋 안녕하세요",bow:"🙇 꾸벅"};
 function poseChar(ch,g,a,now,dt,isMe,walking,standing){
   const up=walking||standing;
   const k=1-Math.pow(0.001,dt); const seed=g.seat*1.7;
   const sipP=(now-a.sipAt)/1700, sipping=sipP>0&&sipP<1, lift=sipping?Math.sin(Math.PI*sipP):0;
-  let aL=0.45,aR=0.45,zL=0.12,zR=-0.12,head=0,yaw=0,bob=0;
+  let aL=0.45,aR=0.45,zL=0.12,zR=-0.12,exR=0,ezR=0,head=0,yaw=0,bob=0;
   if(g.mode==="type"){ aL=aR=1.2; zL=0.28; zR=-0.28; const typing=Math.sin(now/1300+seed)>-0.3; if(typing&&!reduce){ aL+=Math.sin(now/70+seed)*0.06; aR+=Math.sin(now/63+seed+1)*0.06; } head=0.12; }
   if(g.mode==="read"){ aL=aR=1.05; zL=0.42; zR=-0.42; head=0.32; }
   if(g.mode==="rest"&&!reduce){ yaw=Math.sin(now/2200+seed)*0.35; head=-0.08; }
   if(!reduce) bob=Math.sin(now/1600+seed)*0.006;
   if(standing&&!walking){ aL=0.08; aR=0.08; zL=0.1; zR=-0.1; head=0; yaw=reduce?0:Math.sin(now/2600+seed)*0.25; }
-  if(sipping&&!walking){ aR=lerp(aR,2.45,Math.min(1,lift*1.6)); zR=lerp(zR,-0.55,Math.min(1,lift*1.6)); head=lerp(head,-0.22,lift); }
+  // sip: the hand stops just in front of the mouth and the cup tips toward the lips (not up over the head)
+  const tip=sipping?Math.max(0,Math.sin(Math.PI*clamp((sipP-0.3)/0.45,0,1))):0;
+  if(sipping&&!walking){ const e=Math.min(1,lift*1.6); aR=lerp(aR,SIP_A,e); zR=lerp(zR,SIP_Z,e); exR=lerp(0,SIP_EX,e); ezR=lerp(0,SIP_EZ,e); head=lerp(head,SIP_HEAD,tip); }
+  // greetings: a hand wave or a small nod
+  const gD=a.gk==="bow"?1500:1900, gP=(now-(a.gestAt||-1e9))/gD, greeting=gP>0&&gP<1, gE=greeting?Math.min(1,Math.sin(Math.PI*gP)*1.8):0;
   const stepPh=now/170+seed;
   if(walking){ aL=Math.sin(stepPh)*0.55; aR=-Math.sin(stepPh)*0.55; zL=0.08; zR=-0.08; head=0; yaw=0; }
+  if(greeting&&a.gk==="wave"){ aR=lerp(aR,WAVE_A,gE); zR=lerp(zR,WAVE_Z,gE); exR=0; ezR=lerp(0,WAVE_EZ+(reduce?0:Math.sin(now/110)*0.4),gE); if(!walking) head=lerp(head,0.06,gE); }
+  if(greeting&&a.gk==="bow"){ const n=Math.sin(Math.PI*clamp(gP*1.15,0,1)); head=lerp(head,BOW_HEAD,n); if(!walking){ aL=lerp(aL,0.25,n); aR=lerp(aR,0.25,n); zL=lerp(zL,0.25,n); zR=lerp(zR,-0.25,n); } }
   ch.legSit.visible=!up; ch.legStand[-1].visible=ch.legStand[1].visible=up;
   if(walking){ ch.legStand[-1].rotation.x=-Math.sin(stepPh)*0.5; ch.legStand[1].rotation.x=Math.sin(stepPh)*0.5; } else { ch.legStand[-1].rotation.x=0; ch.legStand[1].rotation.x=0; }
-  const c=ch.cur; c.aL=lerp(c.aL,aL,Math.min(1,k*8)); c.aR=lerp(c.aR,aR,Math.min(1,k*(sipping?14:8))); c.zL=lerp(c.zL,zL,Math.min(1,k*8)); c.zR=lerp(c.zR,zR,Math.min(1,k*8)); c.head=lerp(c.head,head,Math.min(1,k*6));
-  ch.arms[-1].rotation.set(c.aL,0,c.zL); ch.arms[1].rotation.set(c.aR,0,c.zR);
+  const c=ch.cur; c.aL=lerp(c.aL,aL,Math.min(1,k*8)); c.aR=lerp(c.aR,aR,Math.min(1,k*(sipping||greeting?14:8))); c.zL=lerp(c.zL,zL,Math.min(1,k*8)); c.zR=lerp(c.zR,zR,Math.min(1,k*(greeting?16:8))); c.exR=lerp(c.exR,exR,Math.min(1,k*12)); c.ezR=lerp(c.ezR,ezR,Math.min(1,k*16)); c.head=lerp(c.head,head,Math.min(1,k*(greeting?10:6)));
+  ch.arms[-1].rotation.set(c.aL,0,c.zL); ch.arms[1].rotation.set(c.aR,0,c.zR); ch.elbows[1].rotation.set(c.exR,0,c.ezR);
   c.lift=lerp(c.lift,up?0.43:0,Math.min(1,k*10));
   ch.hg.rotation.set(c.head,yaw,0); ch.g.position.y=bob+c.lift+(walking?Math.abs(Math.sin(stepPh))*0.03:0);
-  ch.hcup.visible=!walking&&sipping&&sipP>0.12&&sipP<0.88; ch.book.visible=!up&&g.mode==="read";
+  ch.hcup.visible=!walking&&sipping&&sipP>0.12&&sipP<0.88&&!(greeting&&a.gk==="wave"); 
+  if(ch.hcup.visible){ _qa.copy(ch.arms[1].quaternion).multiply(ch.elbows[1].quaternion).invert(); _qt.setFromAxisAngle(_ex,CUP_TIP*tip); ch.hcup.quaternion.copy(_qa.multiply(_qt)); } ch.book.visible=!up&&g.mode==="read";
   const pp=(now-a.pageAt)/700; ch.flip.rotation.z=pp>0&&pp<1?Math.PI*pp:0;
   const fl=g.fe-Date.now(); const focus=g.fe&&fl>0?`${Math.floor(fl/60000)}:${String(Math.floor(fl/1000)%60).padStart(2,"0")}`:"";
   tagTexture(ch,isMe?`${g.nick} (나)`:g.nick,isMe,focus);
@@ -1255,7 +1271,7 @@ function tick(now,dt){
     else if(g.seat===-1){ walking=isMe?controlMe(p,dt):followGoal(p,g,dt); if(walking) moving=true; }
     const dr=((p.rotT-p.rot+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI; p.rot+=dr*Math.min(1,dt*9);
     p.ch.g.position.x=p.x; p.ch.g.position.z=p.z; p.ch.g.rotation.y=p.rot;
-    const a=isMe?myAnim:(anims.get(g.peer)||{sipAt:-1e9,pageAt:-1e9});
+    const a=isMe?myAnim:(anims.get(g.peer)||{sipAt:-1e9,pageAt:-1e9,gestAt:-1e9});
     const cupOnTable=poseChar(p.ch,g,a,now,dt,isMe,walking,!p.seated);
     const hideMe=isMe&&camS.mode==="seat"&&(g.seat===-1||!walking); p.ch.g.visible=!hideMe;
     const bb=bubbles.get(key); if(bb&&now<bb.until){ if(p.ch.bubbleKey!==bb.text){ drawBubble(p.ch,bb.text); } p.ch.bubble.visible=true; } else p.ch.bubble.visible=false;
@@ -1388,7 +1404,8 @@ $("#walkBtn").addEventListener("click",()=>{ if(me.seat>=0) standUp(); else { co
 $("#sitPrompt").addEventListener("click",()=>sitDown(sitTarget));
 document.addEventListener("keydown",e=>{ if(/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return; const k=e.key.toLowerCase();
   if("wasd".includes(k)&&k.length===1&&me.seat===-1){ keysDown.add(k); e.preventDefault(); }
-  if(k==="e"){ if(me.seat===-1&&sitTarget>=0) sitDown(sitTarget); else if(me.seat>=0) standUp(); } });
+  if(k==="e"){ if(me.seat===-1&&sitTarget>=0) sitDown(sitTarget); else if(me.seat>=0) standUp(); }
+  if((k==="q"||k==="r")&&!e.repeat&&!e.metaKey&&!e.ctrlKey&&!e.altKey){ if(ensureAudio()) greet(k==="q"?"wave":"bow"); } });
 document.addEventListener("keyup",e=>keysDown.delete(e.key.toLowerCase()));
 window.addEventListener("blur",()=>keysDown.clear());
 (()=>{ const j=$("#joy"), k=j.querySelector("span"); let id=null;
@@ -1429,6 +1446,11 @@ function sip(){ if(performance.now()-myAnim.sipAt<1500) return; if(me.cup<=0) re
   if(me.cup===0){ $("#cupNote").textContent="한 잔 다 마셨어요. 바리스타가 내려서 가져다 드릴게요"; setTimeout(()=>{ me.cups++; saveStats(); renderStats(); enqueueDelivery("me"); },1200); }
   renderCup(); push(); }
 $("#sipBtn").addEventListener("click",()=>{ if(ensureAudio()) sip(); });
+function greet(kind){ const now=performance.now(); if(now-myAnim.gestAt<1700) return;
+  me.gest++; me.gk=kind; myAnim.gk=kind; myAnim.gestAt=now; if(kind==="wave"&&now-myAnim.sipAt<1700) myAnim.sipAt=-1e9;
+  bubbles.set("me",{text:GEST_TEXT[kind],until:now+2200}); push(); }
+$("#waveBtn").addEventListener("click",()=>{ if(ensureAudio()) greet("wave"); });
+$("#bowBtn").addEventListener("click",()=>{ if(ensureAudio()) greet("bow"); });
 $("#pageBtn").addEventListener("click",()=>{ if(!ensureAudio()) return; if(me.mode!=="read") setMode("read"); me.page++; myAnim.pageAt=performance.now(); sfxPage(0.6); push(); });
 document.addEventListener("keydown",e=>{ if(e.code==="Space"&&!/INPUT|TEXTAREA|BUTTON|SELECT/.test(document.activeElement.tagName)){ e.preventDefault(); if(ensureAudio()) sip(); } });
 function setMode(m){ me.mode=m; store.set("mode",m); document.querySelectorAll("#modeSeg button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.mode===m))); push(); renderPeople(); }
